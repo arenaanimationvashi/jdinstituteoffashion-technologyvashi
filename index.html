@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+  <title>JD Institute of Fashion Technology — Vashi | Student Attendance</title>
+
+  <!-- PWA: Manifest -->
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#2E3542"/>
+
+  <!-- PWA: iOS-specific -->
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="JD Vashi"/>
+  <link rel="apple-touch-icon" href="icons/icon-180.png"/>
+
+  <!-- PWA: Android/Chrome icon -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --cadd-orange: #F47920;
+      --cadd-orange-dark: #D4641A;
+      --cadd-dark: #2E3542;
+      --cadd-darker: #232936;
+      --cadd-card: #323B4B;
+      --cadd-border: rgba(255,255,255,0.09);
+      --text-primary: #FFFFFF;
+      --text-secondary: #B0BAC9;
+      --text-muted: #7A8499;
+      --success: #4CAF82;
+      --warning: #F0C040;
+      --danger: #E05C6A;
+      --radius: 14px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--cadd-darker);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      background: var(--cadd-dark);
+      border-bottom: 2px solid var(--cadd-orange);
+      padding: 10px 24px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .topbar img { height: 44px; object-fit: contain; }
+    .topbar-divider { width:1px; height:36px; background:var(--cadd-border); }
+    .topbar-text { line-height:1.3; }
+    .topbar-text .t1 { font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; color:#fff; }
+    .topbar-text .t2 { font-size:11px; color:var(--text-muted); letter-spacing:0.8px; text-transform:uppercase; }
+    .install-btn {
+      margin-left:auto; background:var(--cadd-orange); color:#fff; border:none;
+      border-radius:8px; padding:8px 16px; font-size:12px; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; display:none; align-items:center; gap:6px;
+      white-space:nowrap; transition:opacity 0.2s;
+    }
+    .install-btn:hover { opacity:0.9; }
+    .install-btn.show { display:flex; }
+
+    /* Install Modal Popup */
+    .install-modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000;
+      display:none; align-items:center; justify-content:center; padding:20px;
+    }
+    .install-modal-overlay.show { display:flex; }
+    .install-modal {
+      background:var(--cadd-dark); border:1px solid var(--cadd-border);
+      border-radius:16px; width:100%; max-width:380px; padding:28px 24px; text-align:center;
+    }
+    .install-modal img { height:56px; margin-bottom:16px; }
+    .install-modal h3 { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; margin-bottom:8px; }
+    .install-modal p { font-size:13px; color:var(--text-secondary); line-height:1.6; margin-bottom:20px; }
+    .install-modal .steps { text-align:left; background:rgba(255,255,255,0.04); border-radius:10px; padding:14px 16px; margin-bottom:20px; }
+    .install-modal .steps div { font-size:13px; color:var(--text-secondary); padding:5px 0; display:flex; gap:8px; }
+    .install-modal .steps div span { color:var(--cadd-orange); font-weight:700; flex-shrink:0; }
+    .install-modal button { width:100%; }
+    .install-modal .btn-skip {
+      background:none; border:none; color:var(--text-muted); font-size:12px;
+      margin-top:12px; cursor:pointer; text-decoration:underline;
+    }
+
+    /* MAIN */
+    .main { flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
+
+    /* LOGIN */
+    #loginScreen { width:100%; max-width:420px; }
+    .login-hero { text-align:center; margin-bottom:28px; }
+    .login-hero img { height:72px; object-fit:contain; margin-bottom:16px; }
+    .login-hero h1 { font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; }
+    .login-hero p { font-size:13px; color:var(--text-muted); margin-top:4px; }
+
+    .card {
+      background: var(--cadd-card);
+      border: 1px solid var(--cadd-border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+    .field { margin-bottom:18px; }
+    .field label { display:block; font-size:11px; font-weight:600; color:var(--text-secondary); margin-bottom:7px; letter-spacing:0.7px; text-transform:uppercase; }
+    .field input {
+      width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--cadd-border);
+      border-radius:9px; color:#fff; padding:12px 14px; font-size:14px;
+      font-family:'Inter',sans-serif; outline:none; transition:border-color 0.2s;
+    }
+    .field input:focus { border-color:var(--cadd-orange); }
+
+    .btn-primary {
+      width:100%; background:var(--cadd-orange); color:#fff; border:none;
+      border-radius:9px; padding:13px; font-size:14px; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; transition:opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity:0.9; }
+    .btn-primary:active { transform:scale(0.99); }
+    .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+
+    .btn-secondary {
+      background:transparent; color:var(--text-secondary); border:1px solid var(--cadd-border);
+      border-radius:9px; padding:13px 18px; font-size:14px; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; transition:border-color 0.2s;
+    }
+    .btn-secondary:hover { border-color:var(--cadd-orange); color:var(--text-primary); }
+
+    /* DASHBOARD */
+    #dashboard { display:none; width:100%; max-width:520px; }
+
+    .student-header {
+      background:var(--cadd-card); border:1px solid var(--cadd-border);
+      border-radius:var(--radius); padding:18px 22px;
+      display:flex; align-items:center; gap:14px; margin-bottom:14px;
+    }
+    .avatar {
+      width:50px; height:50px; background:var(--cadd-orange); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; color:#fff; flex-shrink:0;
+    }
+    .student-info h2 { font-size:17px; font-weight:600; }
+    .student-info p { font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .badge {
+      margin-left:auto; padding:4px 12px; border-radius:20px;
+      font-size:11px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
+    }
+    .badge.active { background:rgba(76,175,130,0.15); color:var(--success); border:1px solid rgba(76,175,130,0.3); }
+    .badge.leave { background:rgba(240,192,64,0.15); color:var(--warning); border:1px solid rgba(240,192,64,0.3); }
+
+    /* Stats */
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+    .stat-card {
+      background:var(--cadd-card); border:1px solid var(--cadd-border);
+      border-radius:10px; padding:16px 14px; text-align:center;
+    }
+    .stat-val { font-family:'Rajdhani',sans-serif; font-size:28px; font-weight:700; color:#fff; }
+    .stat-val.orange { color:var(--cadd-orange); }
+    .stat-val.green { color:var(--success); }
+    .stat-val.red { color:var(--danger); }
+    .stat-label { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+    /* Syllabus practice/session stats */
+    .syl-stats-row { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px; }
+    .syl-stat { background:var(--cadd-card); border:1px solid var(--cadd-border); border-radius:10px; padding:14px; text-align:center; }
+    .syl-stat-val { font-family:'Rajdhani',sans-serif; font-size:24px; font-weight:700; }
+    .syl-stat-val.green { color:var(--success); }
+    .syl-stat-val.orange { color:var(--cadd-orange); }
+    .syl-stat-label { font-size:10px; color:var(--text-muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.5px; }
+    .syl-practice-btn {
+      width:100%; margin-top:8px; padding:10px; border-radius:8px;
+      background:rgba(244,121,32,0.1); border:1px solid rgba(244,121,32,0.35);
+      color:var(--cadd-orange); font-size:13px; font-weight:600; cursor:pointer;
+    }
+    .syl-practice-count { font-size:11px; color:var(--text-muted); margin-top:6px; text-align:center; }
+
+    /* Session banner */
+    .session-active {
+      background:rgba(76,175,130,0.08); border:1px solid rgba(76,175,130,0.2);
+      border-radius:9px; padding:13px 16px;
+      display:flex; align-items:center; gap:12px; margin-bottom:14px;
+    }
+    .pulse-dot {
+      width:10px; height:10px; background:var(--success); border-radius:50%; flex-shrink:0;
+      animation:pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+    .session-text .s1 { font-size:13px; font-weight:600; color:var(--success); }
+    .session-text .s2 { font-size:12px; color:var(--text-muted); margin-top:1px; }
+
+    /* Action card */
+    .action-card {
+      background:var(--cadd-card); border:1px solid var(--cadd-border);
+      border-radius:var(--radius); padding:24px; margin-bottom:14px; text-align:center;
+    }
+    .time-display {
+      font-family:'Rajdhani',sans-serif; font-size:44px; font-weight:700;
+      color:var(--cadd-orange); letter-spacing:2px;
+    }
+    .date-display { font-size:12px; color:var(--text-muted); margin-bottom:18px; }
+    .action-label { font-size:13px; color:var(--text-secondary); margin-bottom:16px; }
+
+    .btn-checkin {
+      width:100%; background:linear-gradient(135deg,#4CAF82,#3A9168);
+      color:#fff; border:none; border-radius:9px; padding:14px;
+      font-size:15px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:opacity 0.2s;
+    }
+    .btn-checkin:hover { opacity:0.9; }
+    .btn-checkin:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn-checkout {
+      width:100%; background:linear-gradient(135deg,#E05C6A,#C04050);
+      color:#fff; border:none; border-radius:9px; padding:14px;
+      font-size:15px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:opacity 0.2s;
+    }
+    .btn-checkout:hover { opacity:0.9; }
+    .btn-checkout:disabled { opacity:0.5; cursor:not-allowed; }
+
+    /* Leave banner */
+    .leave-banner {
+      background:rgba(240,192,64,0.08); border:1px solid rgba(240,192,64,0.25);
+      border-radius:10px; padding:14px 18px;
+      display:flex; align-items:center; gap:12px; margin-bottom:14px;
+    }
+    .leave-banner p { font-size:13px; color:var(--warning); line-height:1.5; }
+
+    /* Location denied */
+    .loc-denied { text-align:center; padding:28px 20px; }
+    .loc-denied .icon { font-size:44px; margin-bottom:12px; }
+    .loc-denied h3 { font-size:17px; font-weight:600; margin-bottom:8px; }
+    .loc-denied p { font-size:13px; color:var(--text-muted); line-height:1.6; }
+
+    /* Streak */
+    .streak-wrap {
+      background:var(--cadd-card); border:1px solid var(--cadd-border);
+      border-radius:var(--radius); padding:18px 20px; margin-bottom:14px;
+    }
+    .streak-title { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:12px; }
+    .streak-row { display:flex; gap:5px; flex-wrap:wrap; }
+    .streak-day {
+      width:30px; height:30px; border-radius:6px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:10px; font-weight:600;
+    }
+    .streak-day.present { background:rgba(76,175,130,0.2); color:var(--success); border:1px solid rgba(76,175,130,0.3); }
+    .streak-day.absent { background:rgba(255,255,255,0.04); color:var(--text-muted); border:1px solid var(--cadd-border); }
+    .streak-day.today-present { background:rgba(244,121,32,0.2); color:var(--cadd-orange); border:2px solid var(--cadd-orange); }
+    .streak-day.today-absent { background:rgba(255,255,255,0.04); color:var(--text-muted); border:2px solid var(--cadd-orange); }
+    .streak-day.not-scheduled { background:transparent; color:var(--text-muted); border:1px dashed rgba(255,255,255,0.08); opacity:0.4; }
+    .streak-day.on-leave { background:rgba(122,132,255,0.15); color:#7A84FF; border:1px solid rgba(122,132,255,0.3); }
+
+    /* History */
+    .history-card { background:var(--cadd-card); border:1px solid var(--cadd-border); border-radius:var(--radius); overflow:hidden; }
+
+    /* SYLLABUS SECTION */
+    .syllabus-wrap { margin-bottom:14px; }
+    .syllabus-module-card {
+      background:var(--cadd-card); border:1px solid var(--cadd-border);
+      border-radius:var(--radius); padding:20px; margin-bottom:14px;
+    }
+    .syl-mod-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .syl-mod-name { font-size:15px; font-weight:600; }
+    .syl-mod-progress-text { font-size:11px; color:var(--text-muted); }
+    .syl-bar-track { height:6px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; margin-bottom:16px; }
+    .syl-bar-fill { height:100%; background:var(--cadd-orange); border-radius:4px; transition:width 0.3s; }
+
+    .syl-current-session {
+      background:rgba(244,121,32,0.08); border:1px solid rgba(244,121,32,0.25);
+      border-radius:10px; padding:16px;
+    }
+    .syl-session-label { font-size:10px; font-weight:700; color:var(--cadd-orange); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:6px; }
+    .syl-session-title { font-size:15px; font-weight:600; margin-bottom:8px; }
+    .syl-session-topics { font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:14px; }
+    .syl-tick-btn {
+      width:100%; background:linear-gradient(135deg,#4CAF82,#3A9168); color:#fff; border:none;
+      border-radius:9px; padding:12px; font-size:13px; font-weight:600; cursor:pointer;
+      font-family:'Inter',sans-serif; transition:opacity 0.2s;
+    }
+    .syl-tick-btn:hover { opacity:0.9; }
+    .syl-tick-btn:disabled { opacity:0.6; cursor:not-allowed; }
+    .syl-pending-note {
+      background:rgba(240,192,64,0.1); border:1px solid rgba(240,192,64,0.3);
+      border-radius:8px; padding:10px 12px; font-size:12px; color:var(--warning);
+      text-align:center; font-weight:500;
+    }
+    .syl-locked-note {
+      text-align:center; padding:20px; color:var(--text-muted); font-size:12px;
+    }
+    .syl-completed-note {
+      text-align:center; padding:16px; color:var(--success); font-size:13px; font-weight:600;
+    }
+
+    .syl-history-toggle {
+      font-size:11px; color:var(--text-muted); text-align:center; margin-top:12px;
+      cursor:pointer; text-decoration:underline;
+    }
+    .syl-history-list { margin-top:10px; display:none; }
+    .syl-history-list.show { display:block; }
+    .syl-history-item {
+      display:flex; align-items:center; gap:8px; padding:6px 0;
+      font-size:12px; color:var(--text-secondary); border-bottom:1px solid var(--cadd-border);
+    }
+    .syl-history-item:last-child { border-bottom:none; }
+    .syl-history-item .hi-check { color:var(--success); flex-shrink:0; }
+
+    /* CALENDAR LOG */
+    .calendar-log-card { background:var(--cadd-card); border:1px solid var(--cadd-border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
+    .cal-log-item { padding:12px 20px; border-bottom:1px solid var(--cadd-border); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .cal-log-item:last-child { border-bottom:none; }
+    .cal-log-date { font-size:12px; font-weight:600; color:var(--text-primary); }
+    .cal-log-session { font-size:11px; color:var(--cadd-orange); margin-top:2px; }
+    .cal-log-hours { font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; color:var(--success); flex-shrink:0; }
+    .cal-log-running-total { padding:14px 20px; background:rgba(244,121,32,0.06); font-size:12px; color:var(--text-secondary); display:flex; justify-content:space-between; }
+    .cal-log-running-total strong { color:var(--cadd-orange); font-family:'Rajdhani',sans-serif; font-size:15px; }
+
+    .logout-reminder-toast {
+      position:fixed; top:70px; left:50%; transform:translateX(-50%);
+      background:var(--cadd-card); border:1px solid rgba(240,192,64,0.4);
+      border-radius:10px; padding:12px 18px; font-size:12px; color:var(--warning);
+      box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:998; max-width:90%;
+      opacity:0; transition:opacity 0.3s; pointer-events:none; text-align:center;
+    }
+    .logout-reminder-toast.show { opacity:1; }
+    .history-header { padding:14px 20px; border-bottom:1px solid var(--cadd-border); font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.7px; }
+    .history-item { padding:13px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--cadd-border); }
+    .history-item:last-child { border-bottom:none; }
+    .h-date { font-size:13px; font-weight:500; color:var(--text-primary); }
+    .h-time { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .h-hrs { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; color:var(--success); }
+    .h-hrs.auto { color:var(--warning); }
+
+    /* Student portal top tabs */
+    .student-tabs {
+      display:flex; gap:6px; margin-bottom:16px; position:sticky; top:0; z-index:50;
+      background:var(--cadd-darker); padding:10px 0 6px;
+    }
+    .student-tab-btn {
+      flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--cadd-border);
+      color:var(--text-secondary); border-radius:10px; padding:10px 8px; font-size:12px;
+      font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.15s;
+      display:flex; flex-direction:column; align-items:center; gap:2px; position:relative;
+    }
+    .student-tab-btn .st-tab-icon { font-size:17px; }
+    .student-tab-btn.active {
+      background:rgba(244,121,32,0.12); border-color:var(--cadd-orange); color:var(--cadd-orange);
+    }
+    .student-tab-btn .st-tab-dot {
+      width:8px; height:8px; border-radius:50%; background:var(--danger); position:absolute;
+      top:6px; right:10px; display:none; box-shadow:0 0 0 2px var(--cadd-darker);
+    }
+    .student-tab-btn .st-tab-dot.show { display:block; }
+
+    .btn-signout {
+      background:none; border:1px solid var(--cadd-border);
+      color:var(--text-muted); font-size:12px; border-radius:8px;
+      padding:8px 18px; cursor:pointer; margin:16px auto 0; display:block;
+      font-family:'Inter',sans-serif; transition:border-color 0.2s;
+    }
+    .btn-signout:hover { border-color:var(--danger); color:var(--danger); }
+
+    /* Toast */
+    .toast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+      background:var(--cadd-dark); border:1px solid var(--cadd-border);
+      border-radius:10px; padding:11px 20px; font-size:13px; font-weight:500;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4); z-index:999;
+      opacity:0; transition:opacity 0.3s; white-space:nowrap; pointer-events:none;
+    }
+    .toast.show { opacity:1; }
+    .toast.success { border-color:var(--success); color:var(--success); }
+    .toast.error { border-color:var(--danger); color:var(--danger); }
+    .toast.warning { border-color:var(--warning); color:var(--warning); }
+
+    /* Feedback */
+    .fb-rating-group { margin-bottom: 18px; }
+    .fb-rating-group label { display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px; }
+    .fb-rating-row { display:flex; align-items:center; gap:12px; }
+    .fb-rating-row input[type=range] {
+      flex:1; -webkit-appearance:none; height:6px; border-radius:4px;
+      background: var(--cadd-border); outline:none;
+    }
+    .fb-rating-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+      background: var(--cadd-orange); cursor:pointer; box-shadow:0 2px 6px rgba(244,121,32,0.5);
+    }
+    .fb-rating-row input[type=range]::-moz-range-thumb {
+      width:20px; height:20px; border-radius:50%; border:none;
+      background: var(--cadd-orange); cursor:pointer;
+    }
+    .fb-rating-val {
+      min-width:42px; text-align:center; font-family:'Rajdhani',sans-serif; font-size:18px;
+      font-weight:700; color:var(--cadd-orange); background:rgba(244,121,32,0.1);
+      border-radius:8px; padding:4px 0;
+    }
+    .fb-comment-box {
+      width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--cadd-border);
+      border-radius:10px; color:var(--text-primary); padding:12px; font-size:13px;
+      font-family:'Inter',sans-serif; resize:vertical; outline:none;
+    }
+    .fb-comment-box:focus { border-color:var(--cadd-orange); }
+    .fb-char-count { text-align:right; font-size:11px; color:var(--text-muted); margin-top:4px; }
+    .fb-locked-box { text-align:center; padding:10px 4px; }
+    .fb-locked-box .icon { font-size:32px; margin-bottom:8px; }
+
+    /* Leave Request */
+    .leave-modal { background:var(--cadd-dark); border:1px solid var(--cadd-border); border-radius:16px; width:100%; max-width:380px; padding:24px; text-align:left; }
+    .leave-modal h3 { font-family:'Rajdhani',sans-serif; font-size:19px; font-weight:700; margin-bottom:6px; }
+    .leave-modal p { font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:14px; }
+    .btn-ghost-full { width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--cadd-border); color:var(--text-secondary); border-radius:10px; padding:12px; font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; }
+
+    @media(max-width:480px){
+      .topbar img { height:34px; }
+      .main { padding:14px; }
+      .time-display { font-size:36px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <img id="logoTopbar" alt="JD Institute of Fashion Technology"/>
+  <div class="topbar-divider"></div>
+  <div class="topbar-text">
+    <div class="t1">Student Attendance</div>
+    <div class="t2">Vashi, Navi Mumbai</div>
+  </div>
+  <button class="install-btn" id="installBtn">📲 Install App</button>
+</div>
+
+<div class="main">
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <div class="login-hero">
+      <img id="logoHero" alt="JD Institute of Fashion Technology"/>
+      <h1>Welcome Back</h1>
+      <p>Login to mark your attendance</p>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>Student ID</label>
+        <input type="text" id="loginId" placeholder="e.g. faiz@123" autocomplete="username"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPw" placeholder="Enter your password" autocomplete="current-password"/>
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()">Login →</button>
+    </div>
+  </div>
+
+  <!-- COURSE VALIDITY EXPIRED (blocks access instead of the normal dashboard) -->
+  <div id="validityExpiredScreen" style="display:none">
+    <div class="login-hero">
+      <div style="font-size:44px;margin-bottom:6px">🔒</div>
+      <h1>Course Validity Expired</h1>
+    </div>
+    <div class="card" style="text-align:center">
+      <p style="color:var(--text-secondary);line-height:1.6" id="validityExpiredText">
+        Your course validity has expired. Please contact the institute admin to renew.
+      </p>
+      <button class="btn-primary" style="margin-top:16px" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+
+    <div class="student-header">
+      <div class="avatar" id="avatarInitial">?</div>
+      <div class="student-info">
+        <h2 id="dashName">—</h2>
+        <p id="dashInfo">—</p>
+      </div>
+      <div class="badge active" id="statusBadge">Active</div>
+    </div>
+
+    <div class="student-tabs">
+      <button class="student-tab-btn active" id="stTab-attendance" onclick="switchStudentTab('attendance')">
+        <span class="st-tab-icon">🏠</span> Attendance
+      </button>
+      <button class="student-tab-btn" id="stTab-feedback" onclick="switchStudentTab('feedback')">
+        <span class="st-tab-dot" id="stDot-feedback"></span>
+        <span class="st-tab-icon">💬</span> Feedback
+      </button>
+      <button class="student-tab-btn" id="stTab-leave" onclick="switchStudentTab('leave')">
+        <span class="st-tab-icon">🌴</span> Leave
+      </button>
+    </div>
+
+    <div id="stPanelAttendance">
+
+    <div class="leave-banner" id="leaveBanner" style="display:none">
+      <span style="font-size:20px">🏖️</span>
+      <p>You are currently <strong>On Leave</strong>. Attendance marking is disabled. Contact your faculty or admin to resume.</p>
+    </div>
+
+    <div class="leave-banner" id="notYourDayBanner" style="display:none">
+      <span style="font-size:20px">📅</span>
+      <p id="notYourDayText">Today isn't one of your scheduled attendance days.</p>
+    </div>
+
+    <div class="leave-banner" id="validityWarningBanner" style="display:none;background:rgba(240,192,64,0.08);border-color:rgba(240,192,64,0.3)">
+      <span style="font-size:20px">⏳</span>
+      <p id="validityWarningText" style="color:#F0C040">Your course validity is expiring soon.</p>
+    </div>
+
+    <div class="leave-banner" id="doneForDayBanner" style="display:none;background:rgba(76,175,130,0.08);border-color:rgba(76,175,130,0.25)">
+      <span style="font-size:20px">✅</span>
+      <p style="color:var(--success)">You've completed today's session. <strong>See you next time!</strong></p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val green" id="statDays">0</div>
+        <div class="stat-label">Days Present</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val red" id="statAbsent">0</div>
+        <div class="stat-label">Days Absent</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val orange" id="statHours">0h</div>
+        <div class="stat-label">Total Hours</div>
+      </div>
+    </div>
+
+    <div class="session-active" id="sessionBanner" style="display:none">
+      <div class="pulse-dot"></div>
+      <div class="session-text">
+        <div class="s1">Session Active</div>
+        <div class="s2" id="sessionStartTime">Checked in at —</div>
+      </div>
+    </div>
+
+    <div class="action-card" id="actionCard">
+      <div class="time-display" id="liveClock">00:00:00</div>
+      <div class="date-display" id="liveDate">—</div>
+      <div class="action-label" id="actionLabel">Tap below to mark your attendance for today</div>
+      <button class="btn-checkin" id="mainActionBtn" onclick="handleAttendanceAction()">✅ Mark Attendance</button>
+    </div>
+
+    <div class="card" id="locationDenied" style="display:none">
+      <div class="loc-denied">
+        <div class="icon">📍</div>
+        <h3>Not Inside JD Vashi</h3>
+        <p>Attendance can only be marked from inside the JD Institute of Fashion Technology centre at Vashi.<br><br>Please allow location access and make sure you are physically at the centre.<br><br><strong>On laptop?</strong> Laptops use WiFi-based location which can be inaccurate. Mobile phones with GPS work best for marking attendance.</p>
+        <div id="mapPreviewBox" style="margin-top:16px; display:none">
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; text-align:left">📍 Red pin = your detected location · The centre is at the target coordinates below</div>
+          <iframe id="locMapFrame" style="width:100%; height:220px; border:1px solid var(--cadd-border); border-radius:9px;" loading="lazy"></iframe>
+        </div>
+        <div id="debugLocBox" style="margin-top:16px; background:rgba(255,255,255,0.04); border:1px solid var(--cadd-border); border-radius:9px; padding:14px; text-align:left; font-size:12px; color:var(--text-secondary); line-height:1.8; display:none"></div>
+        <button class="btn-primary" style="margin-top:18px;width:auto;padding:10px 24px" onclick="retryLocation()">Try Again</button>
+      </div>
+    </div>
+
+    <div class="syllabus-wrap" id="syllabusWrap" style="display:none">
+      <div class="syl-stats-row">
+        <div class="syl-stat">
+          <div class="syl-stat-val green" id="statSessionsApproved">0</div>
+          <div class="syl-stat-label">Sessions Completed</div>
+        </div>
+        <div class="syl-stat">
+          <div class="syl-stat-val orange" id="statPractice">0</div>
+          <div class="syl-stat-label">Practice Sessions</div>
+        </div>
+      </div>
+      <div id="syllabusModuleList"></div>
+    </div>
+
+    <div class="streak-wrap">
+      <div class="streak-title">Last 14 Days</div>
+      <div class="streak-row" id="streakRow"></div>
+    </div>
+
+    <div class="calendar-log-card" id="calendarLogCard" style="display:none">
+      <div class="history-header">Session Calendar</div>
+      <div id="calendarLogList"></div>
+      <div class="cal-log-running-total">
+        <span>Total hours logged</span>
+        <strong id="calLogRunningTotal">0h</strong>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-header">Recent Sessions</div>
+      <div id="historyList">
+        <div class="history-item"><span style="color:var(--text-muted);font-size:13px">No sessions yet.</span></div>
+      </div>
+    </div>
+
+    </div><!-- /stPanelAttendance -->
+
+    <div id="stPanelFeedback" style="display:none">
+
+    <div class="card" id="feedbackCard" style="display:none">
+      <div class="history-header">💬 Feedback</div>
+
+      <div class="fb-locked-box" id="feedbackLockedView" style="display:none">
+        <div class="icon">🔒</div>
+        <p style="color:var(--text-secondary);font-size:13px;line-height:1.6" id="feedbackLockedText">Your next feedback opens soon.</p>
+      </div>
+
+      <div id="feedbackFormView" style="display:none">
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px">Faculty: <strong id="feedbackFacultyName" style="color:var(--text-primary)">—</strong></p>
+
+        <!-- STEP 1: mandatory intro — student must read and press Next before rating -->
+        <div id="fbStep1">
+          <div style="background:rgba(244,121,32,0.08);border:1px solid rgba(244,121,32,0.25);border-radius:10px;padding:14px 16px;margin-bottom:18px">
+            <p style="color:var(--text-secondary);font-size:13px;line-height:1.65;margin:0">
+              🙏 Your feedback is valuable to us — please rate honestly. Whether things are going great or you feel something could be better, let us know. This helps us keep improving for you.
+            </p>
+          </div>
+          <button class="btn-primary" onclick="fbGoToStep2()">Next →</button>
+        </div>
+
+        <!-- STEP 2: ratings + improvement comment + submit -->
+        <div id="fbStep2" style="display:none">
+          <div class="fb-rating-group">
+            <label>Technical / Course Knowledge</label>
+            <div class="fb-rating-row">
+              <input type="range" id="fbRating_technical" min="0" max="10" step="0.5" value="8"/>
+              <div class="fb-rating-val" id="fbRating_technical_val">8</div>
+            </div>
+          </div>
+          <div class="fb-rating-group">
+            <label>Doubt Solving Ability</label>
+            <div class="fb-rating-row">
+              <input type="range" id="fbRating_doubtSolving" min="0" max="10" step="0.5" value="8"/>
+              <div class="fb-rating-val" id="fbRating_doubtSolving_val">8</div>
+            </div>
+          </div>
+          <div class="fb-rating-group">
+            <label>Have You Understood All Topics Covered?</label>
+            <div class="fb-rating-row">
+              <input type="range" id="fbRating_topicsUnderstood" min="0" max="10" step="0.5" value="8"/>
+              <div class="fb-rating-val" id="fbRating_topicsUnderstood_val">8</div>
+            </div>
+          </div>
+          <div class="fb-rating-group">
+            <label>Teaching Pace & Clarity</label>
+            <div class="fb-rating-row">
+              <input type="range" id="fbRating_paceClarity" min="0" max="10" step="0.5" value="8"/>
+              <div class="fb-rating-val" id="fbRating_paceClarity_val">8</div>
+            </div>
+          </div>
+          <div class="fb-rating-group">
+            <label>Overall Faculty Rating</label>
+            <div class="fb-rating-row">
+              <input type="range" id="fbRating_overall" min="0" max="10" step="0.5" value="8"/>
+              <div class="fb-rating-val" id="fbRating_overall_val">8</div>
+            </div>
+          </div>
+
+          <div class="fb-rating-group">
+            <label>How can we improve?</label>
+            <textarea class="fb-comment-box" id="fbComment" maxlength="500" rows="4" placeholder="Share your thoughts — what's working, what could be better…"></textarea>
+            <div class="fb-char-count"><span id="fbCommentCount">0</span>/500</div>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <button class="btn-secondary" onclick="fbBackToStep1()">← Back</button>
+            <button class="btn-primary" id="fbSubmitBtn" onclick="submitFeedback()" style="flex:1">Submit Feedback</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /stPanelFeedback -->
+
+    <div id="stPanelLeave" style="display:none">
+
+    <div class="card" id="leaveRequestCard">
+      <div class="history-header">🌴 Leave Request</div>
+      <div id="leaveRequestStatus" style="display:none">
+        <p style="color:var(--text-secondary);font-size:13px;line-height:1.6" id="leaveRequestStatusText"></p>
+      </div>
+      <button class="btn-ghost-full" id="leaveRequestBtn" onclick="openLeaveRequestModal()" style="display:none">Request Leave</button>
+      <button class="btn-primary" id="leaveRevokeBtn" onclick="revokeMyLeave()" style="display:none">I'm Back — End My Leave</button>
+    </div>
+
+    </div><!-- /stPanelLeave -->
+
+    <button class="btn-signout" onclick="doLogout()">Sign Out</button>
+  </div>
+
+</div>
+
+<!-- LEAVE REQUEST MODAL -->
+<div class="install-modal-overlay" id="leaveRequestModalOverlay">
+  <div class="leave-modal">
+    <h3>Request Leave</h3>
+    <p>Let the institute know why you'll be away. Admin will review this and update your status.</p>
+
+    <p style="font-size:11.5px;color:var(--text-muted);background:rgba(244,121,32,0.08);border:1px solid rgba(244,121,32,0.2);border-radius:8px;padding:8px 10px;margin:10px 0">
+      📅 For a single day, pick the <strong>same date</strong> in both fields. For more than one day, pick your start date in "From" and your last day in "To".
+    </p>
+
+    <div style="display:flex;gap:10px;margin-bottom:4px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">From</label>
+        <input type="date" id="leaveFromInput" style="width:100%;background:var(--card);border:1px solid var(--cadd-border);border-radius:8px;color:#fff;padding:9px 10px;font-size:13px;font-family:'Inter',sans-serif;outline:none"/>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">To</label>
+        <input type="date" id="leaveToInput" style="width:100%;background:var(--card);border:1px solid var(--cadd-border);border-radius:8px;color:#fff;padding:9px 10px;font-size:13px;font-family:'Inter',sans-serif;outline:none"/>
+      </div>
+    </div>
+    <div id="leaveDurationLabel" style="font-size:11.5px;color:var(--cadd-orange);font-weight:600;margin-bottom:12px;min-height:16px"></div>
+
+    <textarea class="fb-comment-box" id="leaveReasonInput" rows="4" maxlength="500" placeholder="Reason for leave…"></textarea>
+    <div class="fb-char-count"><span id="leaveReasonCount">0</span>/500</div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-ghost-full" onclick="closeLeaveRequestModal()">Cancel</button>
+      <button class="btn-primary" id="leaveSubmitBtn" onclick="submitLeaveRequest()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- INSTALL MODAL -->
+<div class="install-modal-overlay" id="installModalOverlay">
+  <div class="install-modal">
+    <img id="installModalLogo" alt="JD Institute of Fashion Technology"/>
+    <h3>Install JD Vashi</h3>
+    <p id="installModalText">Add this app to your home screen for quick access — no browser, no searching for links.</p>
+    <div class="steps" id="iosSteps" style="display:none">
+      <div><span>1.</span> Tap the Share button (square with arrow) at the bottom of Safari</div>
+      <div><span>2.</span> Scroll down and tap "Add to Home Screen"</div>
+      <div><span>3.</span> Tap "Add" — done!</div>
+    </div>
+    <button class="btn-primary" id="installModalBtn" onclick="triggerInstall()">📲 Install Now</button>
+    <button class="btn-skip" onclick="closeInstallModal()">Maybe later</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="logout-reminder-toast" id="logoutReminderToast"></div>
+
+<script type="module">
+// Single shared logo constant — set once via JS instead of embedding the same
+// ~97KB base64 string three times inline (cuts page weight, fixes slow/failed
+// render of the logo on mobile/slow connections).
+const LOGO_B64 = "data:image/png;base64,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";
+['logoTopbar','logoHero','installModalLogo'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.src = LOGO_B64;
+});
+
+window.addEventListener('error', (e) => {
+  console.error('Global error:', e.message, 'at', e.filename + ':' + e.lineno);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Unhandled promise rejection:', e.reason?.message || e.reason);
+});
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, query, where,
+  getDocs, addDoc, updateDoc, orderBy, limit, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// TODO: replace with your JD Institute Firestore project config
+const firebaseConfig = {
+  apiKey: "AIzaSyAtFCkdHMgWyIuN2NVGhZikbpOJmJjxAe0",
+  authDomain: "jd-sats.firebaseapp.com",
+  projectId: "jd-sats",
+  storageBucket: "jd-sats.firebasestorage.app",
+  messagingSenderId: "715184613041",
+  appId: "1:715184613041:web:f26135262e45c1aa41e490"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── LOCATION SETTINGS ──
+// TEST_MODE: true = use a nearby test coordinate instead of the real centre
+//            false = use the real JD Institute (Vashi) centre coordinates
+const TEST_MODE = false;
+
+// JD Institute of Fashion Technology — Vashi
+// 19°03'59.2"N 72°59'51.1"E
+const VASHI_LAT = 19.066033910197003;
+const VASHI_LNG = 72.99916113464377;
+const VASHI_RADIUS = 150;
+
+const HOME_LAT = 18.96543509902187;
+const HOME_LNG = 72.83028537803203;
+const HOME_RADIUS = 150;
+
+const CENTRE_LAT = TEST_MODE ? HOME_LAT : VASHI_LAT;
+const CENTRE_LNG = TEST_MODE ? HOME_LNG : VASHI_LNG;
+const RADIUS_M = TEST_MODE ? HOME_RADIUS : VASHI_RADIUS;
+const AUTO_LOGOUT_HRS = 3;
+
+// Syllabus content — populate once JD Institute of Fashion Technology provides
+// the official course/session curriculum. Left empty for now; the app already
+// falls back to generic "Session N" placeholders when a module has no entry here.
+const SYLLABUS_CATALOGUE = {
+};
+
+function getSyllabusSessionInfo(modId, sessionNum) {
+  if (SYLLABUS_CATALOGUE[modId]) {
+    const found = SYLLABUS_CATALOGUE[modId].sessions.find(s => s.num === sessionNum);
+    if (found) return found;
+  }
+  return { num: sessionNum, title: `Session ${sessionNum}`, topics: '' };
+}
+
+let currentStudentDocId = null; // used by syllabus tick handler
+
+let currentStudent = null;
+
+// Live-calculated every time it's called — nothing about validity is ever stored as a
+// status. If admin extends validityEndDate, the very next time this runs (student's next
+// login or page refresh) it just returns 'active' again — no separate "reactivate" step,
+// no delay. A missing/null validityEndDate always means "no restriction" (safe default for
+// existing students who never had this field set).
+function getValidityStatus(validityEndDate) {
+  if (!validityEndDate) return { state: 'unset', daysLeft: null };
+  const end = new Date(validityEndDate.seconds * 1000); end.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysLeft = Math.round((end - today) / 86400000);
+  if (daysLeft < 0) return { state: 'expired', daysLeft };
+  if (daysLeft <= 30) return { state: 'expiring', daysLeft };
+  return { state: 'active', daysLeft };
+}
+let activeSession = null;
+let clockInterval = null;
+
+window.doLogin = doLogin;
+window.doLogout = doLogout;
+window.handleAttendanceAction = handleAttendanceAction;
+window.retryLocation = retryLocation;
+window.tickSessionComplete = tickSessionComplete;
+window.toggleSylHistory = toggleSylHistory;
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3400);
+}
+
+function startClock() {
+  if (clockInterval) clearInterval(clockInterval);
+  function tick() {
+    const now = new Date();
+    document.getElementById('liveClock').textContent =
+      now.toLocaleTimeString('en-IN', { hour12:false });
+    document.getElementById('liveDate').textContent =
+      now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  }
+  tick();
+  clockInterval = setInterval(tick, 1000);
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getLocation() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) { rej(new Error('Geolocation not supported')); return; }
+
+    let settled = false;
+
+    // Hard safety-net timeout: some Android Chrome builds never fire either callback
+    // after the permission prompt, leaving the browser's own `timeout` option useless.
+    // This guarantees the promise always resolves/rejects within 15s no matter what.
+    const safetyTimer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        rej(new Error('TIMEOUT_NO_RESPONSE'));
+      }
+    }, 15000);
+
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(safetyTimer);
+        res({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy });
+      },
+      e => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(safetyTimer);
+        rej(e);
+      },
+      { enableHighAccuracy: true, timeout: 14000, maximumAge: 10000 }
+    );
+  });
+}
+
+async function doLogin() {
+  const id = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value.trim();
+  if (!id || !pw) { showToast('Enter your Student ID and Password', 'error'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  try {
+    const q = query(collection(db,'cadd_students'), where('studentId','==',id), where('password','==',pw));
+    const snap = await getDocs(q);
+    if (snap.empty) { showToast('Invalid Student ID or Password', 'error'); btn.disabled=false; btn.textContent='Login →'; return; }
+    const d = snap.docs[0];
+    currentStudent = { docId: d.id, ...d.data() };
+    if (currentStudent.status === 'deactivated') {
+      showToast('Your account has been deactivated. Contact admin.', 'error');
+      btn.disabled=false; btn.textContent='Login →'; return;
+    }
+    const validity = getValidityStatus(currentStudent.validityEndDate);
+    if (validity.state === 'expired') {
+      sessionStorage.setItem('cadd_student_docId', currentStudent.docId); // still let session-restore recognize them (so re-checking after admin extends works instantly)
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('validityExpiredText').textContent =
+        `Your course validity expired ${Math.abs(validity.daysLeft)} day${Math.abs(validity.daysLeft)===1?'':'s'} ago. Please contact the institute admin to renew.`;
+      document.getElementById('validityExpiredScreen').style.display='block';
+      btn.disabled=false; btn.textContent='Login →';
+      return;
+    }
+    // Save session so page refresh doesn't log out
+    sessionStorage.setItem('cadd_student_docId', currentStudent.docId);
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    await loadDashboard();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled=false; btn.textContent='Login →';
+  }
+}
+
+// Restore session on page load/refresh
+async function tryRestoreSession() {
+  const savedDocId = sessionStorage.getItem('cadd_student_docId');
+  if (!savedDocId) return;
+  try {
+    const docSnap = await getDoc(doc(db,'cadd_students',savedDocId));
+    if (docSnap.exists()) {
+      currentStudent = { docId: docSnap.id, ...docSnap.data() };
+      if (currentStudent.status === 'deactivated') { sessionStorage.removeItem('cadd_student_docId'); return; }
+      const validity = getValidityStatus(currentStudent.validityEndDate);
+      if (validity.state === 'expired') {
+        document.getElementById('loginScreen').style.display='none';
+        document.getElementById('validityExpiredText').textContent =
+          `Your course validity expired ${Math.abs(validity.daysLeft)} day${Math.abs(validity.daysLeft)===1?'':'s'} ago. Please contact the institute admin to renew.`;
+        document.getElementById('validityExpiredScreen').style.display='block';
+        return;
+      }
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      await loadDashboard();
+    } else {
+      sessionStorage.removeItem('cadd_student_docId');
+    }
+  } catch(e) {
+    sessionStorage.removeItem('cadd_student_docId');
+  }
+}
+
+async function loadDashboard() {
+  const s = currentStudent;
+  currentStudentDocId = currentStudent.docId;
+  // Always reset location error state and done-for-day on fresh dashboard load
+  document.getElementById('locationDenied').style.display='none';
+  document.getElementById('actionCard').style.display='block';
+  document.getElementById('doneForDayBanner').style.display='none';
+  document.getElementById('dashName').textContent = s.name;
+  document.getElementById('dashInfo').textContent = (s.course||'') + (s.slot ? ' · ' + s.slot : '') + (s.faculty ? ' · ' + s.faculty : '');
+  document.getElementById('avatarInitial').textContent = s.name.charAt(0).toUpperCase();
+  const badge = document.getElementById('statusBadge');
+
+  // Course validity countdown — purely informational here (blocking already happened
+  // before loadDashboard() was ever called, in doLogin()/tryRestoreSession()).
+  const validity = getValidityStatus(s.validityEndDate);
+  const validityBanner = document.getElementById('validityWarningBanner');
+  if (validity.state === 'expiring') {
+    document.getElementById('validityWarningText').textContent =
+      validity.daysLeft === 0
+        ? 'Your course validity expires today. Please contact the institute admin to renew.'
+        : `Your course validity expires in ${validity.daysLeft} day${validity.daysLeft===1?'':'s'}. Please contact the institute admin to renew.`;
+    validityBanner.style.display = 'flex';
+  } else {
+    validityBanner.style.display = 'none';
+  }
+
+  const todayDay = new Date().getDay();
+  const allowedDays = s.attendanceDays || [];
+  const isTodayAllowed = allowedDays.length === 0 || allowedDays.includes(todayDay);
+
+  if (s.status === 'on_leave') {
+    badge.className='badge leave'; badge.textContent='On Leave';
+    document.getElementById('leaveBanner').style.display='flex';
+    document.getElementById('actionCard').style.display='none';
+  } else if (!isTodayAllowed) {
+    badge.className='badge active'; badge.textContent='Active';
+    document.getElementById('leaveBanner').style.display='none';
+    document.getElementById('actionCard').style.display='none';
+    document.getElementById('notYourDayBanner').style.display='flex';
+    const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const yourDays = allowedDays.map(d=>dayNames[d]).join(', ');
+    document.getElementById('notYourDayText').textContent = `Today isn't one of your scheduled days. Your attendance days are: ${yourDays}.`;
+  } else {
+    badge.className='badge active'; badge.textContent='Active';
+    document.getElementById('leaveBanner').style.display='none';
+    document.getElementById('notYourDayBanner').style.display='none';
+    document.getElementById('actionCard').style.display='block';
+  }
+  renderSyllabusSection(s.modules || {});
+  await loadStats();
+  await loadCalendarLog();
+  await checkActiveSession();
+  await loadFeedbackSection();
+  await loadLeaveRequestStatus();
+  startClock();
+}
+
+// ── FEEDBACK ──
+// Checkpoints: Day 30 (first), Day 60, Day 90, then every 60 days after that (150, 210, 270…).
+// Nothing about "is feedback due" is ever stored as a status — it's computed live every time
+// from trackingStartDate + which checkpoints this student has already submitted for, same
+// philosophy as the validity system. admin can force-unlock a student early via
+// feedbackForceUnlock on their doc; that flag auto-clears the moment they submit.
+function getFeedbackCheckpoints(daysSince) {
+  const checkpoints = [];
+  if (daysSince >= 30) checkpoints.push(30);
+  if (daysSince >= 60) checkpoints.push(60);
+  if (daysSince >= 90) checkpoints.push(90);
+  let next = 150;
+  while (daysSince >= next) { checkpoints.push(next); next += 60; }
+  return checkpoints;
+}
+function getNextFeedbackCheckpoint(daysSince) {
+  if (daysSince < 30) return 30;
+  if (daysSince < 60) return 60;
+  if (daysSince < 90) return 90;
+  let next = 150;
+  while (daysSince >= next) next += 60;
+  return next;
+}
+
+const FB_RATING_IDS = ['technical','doubtSolving','topicsUnderstood','paceClarity','overall'];
+FB_RATING_IDS.forEach(id => {
+  const el = document.getElementById('fbRating_' + id);
+  if (el) el.addEventListener('input', () => {
+    document.getElementById('fbRating_' + id + '_val').textContent = el.value;
+  });
+});
+
+// Two-step feedback flow: Step 1 is a mandatory intro the student must read and
+// acknowledge (Next) before Step 2 (ratings + improvement comment + Submit) appears.
+function fbResetToStep1() {
+  document.getElementById('fbStep1').style.display = 'block';
+  document.getElementById('fbStep2').style.display = 'none';
+}
+function fbGoToStep2() {
+  document.getElementById('fbStep1').style.display = 'none';
+  document.getElementById('fbStep2').style.display = 'block';
+}
+function fbBackToStep1() {
+  document.getElementById('fbStep2').style.display = 'none';
+  document.getElementById('fbStep1').style.display = 'block';
+}
+window.fbGoToStep2 = fbGoToStep2;
+window.fbBackToStep1 = fbBackToStep1;
+
+const fbCommentEl = document.getElementById('fbComment');
+if (fbCommentEl) fbCommentEl.addEventListener('input', () => {
+  document.getElementById('fbCommentCount').textContent = fbCommentEl.value.length;
+});
+
+function getDefaultFeedbackFacultyId(modules) {
+  for (const modId in (modules || {})) {
+    const mod = modules[modId];
+    if (!mod.facultyAssignments || !mod.facultyAssignments.length) continue;
+    const total = mod.totalSessions || Object.keys(mod.sessions || {}).length;
+    let currentSession = 1;
+    for (let n = 1; n <= total; n++) {
+      if (mod.sessions[n] && mod.sessions[n].approved) currentSession = n + 1;
+    }
+    const assignment = mod.facultyAssignments.find(fa => currentSession >= fa.fromSession && currentSession <= fa.toSession) || mod.facultyAssignments[0];
+    if (assignment && assignment.facultyId) return assignment.facultyId;
+  }
+  return null;
+}
+
+let fbCurrentCheckpoint = null;
+let fbCurrentFacultyId = null;
+let fbCurrentFacultyName = '—';
+
+async function loadFeedbackSection() {
+  const card = document.getElementById('feedbackCard');
+  const s = currentStudent;
+  if (!s || !s.trackingStartDate) { card.style.display = 'none'; return; } // no tracking start set yet — nothing to base checkpoints on
+  card.style.display = 'block';
+
+  const daysSince = Math.floor((Date.now() - s.trackingStartDate.seconds * 1000) / 86400000);
+  const checkpoints = getFeedbackCheckpoints(daysSince);
+  const dueCheckpoint = checkpoints.length ? checkpoints[checkpoints.length - 1] : null;
+
+  // Single equality query (no composite index needed) — which checkpoints has this
+  // student already submitted feedback for.
+  const q = query(collection(db, 'cadd_feedback'), where('studentDocId', '==', s.docId));
+  const snap = await getDocs(q);
+  const submittedCheckpoints = snap.docs.map(d => d.data().checkpointDay);
+
+  const naturallyDue = dueCheckpoint !== null && !submittedCheckpoints.includes(dueCheckpoint);
+  const nextCheckpointDay = getNextFeedbackCheckpoint(daysSince);
+  const forced = !!s.feedbackForceUnlock;
+
+  if (naturallyDue || forced) {
+    fbCurrentCheckpoint = naturallyDue ? dueCheckpoint : nextCheckpointDay;
+    fbCurrentFacultyId = getDefaultFeedbackFacultyId(s.modules);
+    fbCurrentFacultyName = '—';
+    if (fbCurrentFacultyId) {
+      try {
+        const facSnap = await getDoc(doc(db, 'cadd_faculty', fbCurrentFacultyId));
+        if (facSnap.exists()) fbCurrentFacultyName = facSnap.data().name || '—';
+      } catch(e) { /* leave as — */ }
+    }
+    document.getElementById('feedbackFacultyName').textContent = fbCurrentFacultyName;
+    document.getElementById('feedbackLockedView').style.display = 'none';
+    document.getElementById('feedbackFormView').style.display = 'block';
+    fbResetToStep1();
+    document.getElementById('stDot-feedback')?.classList.add('show');
+  } else {
+    const daysUntil = Math.max(0, nextCheckpointDay - daysSince);
+    document.getElementById('feedbackLockedText').textContent =
+      `Your next feedback opens in ${daysUntil} day${daysUntil===1?'':'s'} (Day ${nextCheckpointDay}).`;
+    document.getElementById('feedbackLockedView').style.display = 'block';
+    document.getElementById('feedbackFormView').style.display = 'none';
+    document.getElementById('stDot-feedback')?.classList.remove('show');
+  }
+}
+
+async function submitFeedback() {
+  const btn = document.getElementById('fbSubmitBtn');
+  const comment = document.getElementById('fbComment').value.trim();
+  const ratings = {};
+  FB_RATING_IDS.forEach(id => { ratings[id] = parseFloat(document.getElementById('fbRating_' + id).value); });
+
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    await addDoc(collection(db, 'cadd_feedback'), {
+      studentDocId: currentStudent.docId,
+      studentName: currentStudent.name,
+      studentIdDisplay: currentStudent.studentId,
+      course: currentStudent.course || '',
+      facultyDocId: fbCurrentFacultyId,
+      facultyName: fbCurrentFacultyName,
+      checkpointDay: fbCurrentCheckpoint,
+      ratings,
+      comment,
+      visibleToFaculty: false, // admin turns this on per-student when they choose to
+      submittedAt: Timestamp.now()
+    });
+    // Auto-clear a manual force-unlock the moment they use it, so it doesn't stay open forever
+    if (currentStudent.feedbackForceUnlock) {
+      await updateDoc(doc(db, 'cadd_students', currentStudent.docId), { feedbackForceUnlock: false });
+      currentStudent.feedbackForceUnlock = false;
+    }
+    document.getElementById('fbComment').value = '';
+    document.getElementById('fbCommentCount').textContent = '0';
+    showToast('Thanks for your feedback! 🙏', 'success');
+    await loadFeedbackSection();
+  } catch(e) {
+    showToast('Error submitting feedback: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Feedback';
+  }
+}
+window.submitFeedback = submitFeedback;
+
+// ── LEAVE REQUEST ──
+const leaveReasonEl = document.getElementById('leaveReasonInput');
+if (leaveReasonEl) leaveReasonEl.addEventListener('input', () => {
+  document.getElementById('leaveReasonCount').textContent = leaveReasonEl.value.length;
+});
+
+function updateLeaveDurationLabel() {
+  const fromVal = document.getElementById('leaveFromInput').value;
+  const toVal = document.getElementById('leaveToInput').value;
+  const label = document.getElementById('leaveDurationLabel');
+  if (!fromVal || !toVal) { label.textContent = ''; return; }
+  if (toVal < fromVal) { label.textContent = '⚠️ "To" date is before "From" date'; return; }
+  const days = Math.round((new Date(toVal) - new Date(fromVal)) / 86400000) + 1;
+  label.textContent = days === 1 ? '📆 1 day leave' : `📆 ${days} day leave`;
+}
+['leaveFromInput','leaveToInput'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', updateLeaveDurationLabel);
+});
+
+function openLeaveRequestModal() {
+  document.getElementById('leaveReasonInput').value = '';
+  document.getElementById('leaveReasonCount').textContent = '0';
+  const todayStr = new Date().toISOString().slice(0,10);
+  document.getElementById('leaveFromInput').value = todayStr;
+  document.getElementById('leaveToInput').value = todayStr;
+  updateLeaveDurationLabel();
+  document.getElementById('leaveRequestModalOverlay').classList.add('show');
+}
+window.openLeaveRequestModal = openLeaveRequestModal;
+
+function closeLeaveRequestModal() {
+  document.getElementById('leaveRequestModalOverlay').classList.remove('show');
+}
+window.closeLeaveRequestModal = closeLeaveRequestModal;
+
+async function submitLeaveRequest() {
+  const reason = document.getElementById('leaveReasonInput').value.trim();
+  const dateFrom = document.getElementById('leaveFromInput').value;
+  const dateTo = document.getElementById('leaveToInput').value;
+  if (!reason) { showToast('Please add a reason for your leave', 'error'); return; }
+  if (!dateFrom || !dateTo) { showToast('Pick both dates', 'error'); return; }
+  if (dateTo < dateFrom) { showToast('"To" date is before "From" date', 'error'); return; }
+  const btn = document.getElementById('leaveSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    await addDoc(collection(db, 'cadd_leave_requests'), {
+      studentDocId: currentStudent.docId,
+      studentName: currentStudent.name,
+      studentIdDisplay: currentStudent.studentId,
+      course: currentStudent.course || '',
+      reason,
+      dateFrom, dateTo,
+      status: 'pending',
+      requestedAt: Timestamp.now(),
+      reviewedAt: null
+    });
+    closeLeaveRequestModal();
+    showToast('Leave request submitted — admin will review it', 'success');
+    await loadLeaveRequestStatus();
+  } catch(e) {
+    showToast('Error submitting request: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit';
+  }
+}
+window.submitLeaveRequest = submitLeaveRequest;
+
+async function loadLeaveRequestStatus() {
+  try {
+    // Single equality query (no composite index needed) — sort client-side.
+    const q = query(collection(db, 'cadd_leave_requests'), where('studentDocId', '==', currentStudent.docId));
+    const snap = await getDocs(q);
+    const requests = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.requestedAt.seconds - a.requestedAt.seconds);
+    const latest = requests[0];
+    currentLeaveRequestId = latest ? latest.id : null; // used by revokeMyLeave()
+    const statusBox = document.getElementById('leaveRequestStatus');
+    const statusText = document.getElementById('leaveRequestStatusText');
+    const btn = document.getElementById('leaveRequestBtn');
+    const revokeBtn = document.getElementById('leaveRevokeBtn');
+
+    if (latest && latest.status === 'pending') {
+      const range = latest.dateFrom ? `${latest.dateFrom} → ${latest.dateTo}` : new Date(latest.requestedAt.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      statusText.textContent = `⏳ Your leave request (${range}) is pending admin review.`;
+      statusBox.style.display = 'block';
+      btn.style.display = 'none';
+      revokeBtn.style.display = 'none';
+    } else if (latest && latest.status === 'approved') {
+      const range = latest.dateFrom ? `${latest.dateFrom} → ${latest.dateTo}` : new Date(latest.requestedAt.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      statusText.textContent = `✅ Your leave (${range}) was approved.`;
+      statusBox.style.display = 'block';
+      btn.style.display = 'none'; // don't offer a new request while one is already active
+      revokeBtn.style.display = 'block'; // "I'm back" — let them end it themselves
+    } else {
+      if (latest && latest.status === 'revoked') {
+        const range = latest.dateFrom ? `${latest.dateFrom} → ${latest.dateTo}` : new Date(latest.requestedAt.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        statusText.textContent = `Your leave (${range}) was ended early — welcome back!`;
+        statusBox.style.display = 'block';
+      } else if (latest && latest.status === 'rejected') {
+        const range = latest.dateFrom ? `${latest.dateFrom} → ${latest.dateTo}` : new Date(latest.requestedAt.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        statusText.textContent = `Your leave request (${range}) was not approved.`;
+        statusBox.style.display = 'block';
+      } else {
+        statusBox.style.display = 'none';
+      }
+      btn.style.display = 'block';
+      revokeBtn.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Leave request status error:', e);
+  }
+}
+window.loadLeaveRequestStatus = loadLeaveRequestStatus;
+
+// Lets a student end their own approved leave early ("I'm back"). No admin approval needed
+// for this direction — going back to active/attending is always fine to self-serve. Sets the
+// leave request to 'revoked' (distinct from 'rejected', so admin can tell them apart) and
+// flips the student's own status back to 'active'.
+let currentLeaveRequestId = null;
+async function revokeMyLeave() {
+  if (!currentLeaveRequestId) return;
+  if (!confirm("End your leave now and mark yourself active again?")) return;
+  const btn = document.getElementById('leaveRevokeBtn');
+  btn.disabled = true; btn.textContent = 'Ending leave…';
+  try {
+    await updateDoc(doc(db, 'cadd_leave_requests', currentLeaveRequestId), { status: 'revoked', revokedAt: Timestamp.now() });
+    await updateDoc(doc(db, 'cadd_students', currentStudent.docId), { status: 'active' });
+    currentStudent.status = 'active';
+    showToast("Welcome back! You're marked active again.", 'success');
+    await loadLeaveRequestStatus();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = "I'm Back — End My Leave";
+  }
+}
+window.revokeMyLeave = revokeMyLeave;
+
+// ── TOP TABS ──
+function switchStudentTab(tab) {
+  document.getElementById('stPanelAttendance').style.display = tab === 'attendance' ? 'block' : 'none';
+  document.getElementById('stPanelFeedback').style.display = tab === 'feedback' ? 'block' : 'none';
+  document.getElementById('stPanelLeave').style.display = tab === 'leave' ? 'block' : 'none';
+  document.getElementById('stTab-attendance').classList.toggle('active', tab === 'attendance');
+  document.getElementById('stTab-feedback').classList.toggle('active', tab === 'feedback');
+  document.getElementById('stTab-leave').classList.toggle('active', tab === 'leave');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+window.switchStudentTab = switchStudentTab;
+
+document.getElementById('leaveRequestModalOverlay')?.addEventListener('click', (e) => {
+  if (e.target.id === 'leaveRequestModalOverlay') closeLeaveRequestModal();
+});
+
+// ── SYLLABUS SECTION ──
+function renderSyllabusSection(modules) {
+  const wrap = document.getElementById('syllabusWrap');
+  const list = document.getElementById('syllabusModuleList');
+  const modIds = Object.keys(modules);
+
+  if (!modIds.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML = '';
+
+  // Aggregate stats across all modules — updates the two stat cards at the top
+  let totalApprovedAll = 0, totalPracticeAll = 0;
+  modIds.forEach(modId => {
+    const sessions = modules[modId].sessions || {};
+    totalApprovedAll += Object.values(sessions).filter(x => x.approved).length;
+    totalPracticeAll += Object.values(sessions).reduce((sum,x) => sum + (x.practiceCount||0), 0);
+  });
+  const statApprovedEl = document.getElementById('statSessionsApproved');
+  const statPracticeEl = document.getElementById('statPractice');
+  if (statApprovedEl) statApprovedEl.textContent = totalApprovedAll;
+  if (statPracticeEl) statPracticeEl.textContent = totalPracticeAll;
+
+  modIds.forEach(modId => {
+    const mod = modules[modId];
+
+    // ── AUTO-MIGRATE old format to new format ──
+    // Old format had: { name, category, weeks, sessionsDone: [1,2,3] }
+    // New format has: { name, category, weeks, totalSessions, facultyAssignments, sessions: {1:{...},2:{...}} }
+    // If sessions map doesn't exist, build it from scratch (or from old sessionsDone array if present)
+    if (!mod.sessions || typeof mod.sessions !== 'object' || Array.isArray(mod.sessions)) {
+      const catalogueData = SYLLABUS_CATALOGUE[modId];
+      const total = mod.totalSessions || (catalogueData ? catalogueData.sessions.length : (mod.weeks || 1) * 2);
+      const oldDone = Array.isArray(mod.sessionsDone) ? mod.sessionsDone : [];
+      mod.sessions = {};
+      for (let n = 1; n <= total; n++) {
+        const wasDone = oldDone.includes(n);
+        mod.sessions[n] = {
+          studentTicked: wasDone,
+          tickedAt: null,
+          approved: false, // old format had no approval — start fresh, faculty needs to approve
+          approvedBy: null,
+          approvedAt: null,
+          autoTicked: false,
+          practiceCount: 0,
+          lastPracticedAt: null
+        };
+      }
+      mod.totalSessions = total;
+      if (!mod.facultyAssignments) mod.facultyAssignments = [];
+    }
+
+    const catalogueTotal = SYLLABUS_CATALOGUE[modId] ? SYLLABUS_CATALOGUE[modId].sessions.length : null;
+    const totalSessions = mod.totalSessions || Object.keys(mod.sessions || {}).length || catalogueTotal || (mod.weeks * 2) || 1;
+    const sessions = mod.sessions || {};
+    const approvedCount = Object.values(sessions).filter(x => x.approved).length;
+    const pct = totalSessions ? Math.round((approvedCount / totalSessions) * 100) : 0;
+
+    // Find current session: first one that is NOT approved
+    let currentNum = null;
+    for (let n = 1; n <= totalSessions; n++) {
+      if (!sessions[n] || !sessions[n].approved) { currentNum = n; break; }
+    }
+
+    const card = document.createElement('div');
+    card.className = 'syllabus-module-card';
+
+    let bodyHtml = '';
+    if (currentNum === null) {
+      // All sessions approved — module complete
+      bodyHtml = `<div class="syl-completed-note">🎉 Module complete! All ${totalSessions} sessions approved.</div>`;
+    } else {
+      const sess = sessions[currentNum] || {};
+      const info = getSyllabusSessionInfo(modId, currentNum);
+      if (sess.approved) {
+        // shouldn't happen given currentNum logic, but safe fallback
+        bodyHtml = `<div class="syl-completed-note">Session ${currentNum} approved.</div>`;
+      } else if (sess.studentTicked) {
+        bodyHtml = `
+          <div class="syl-current-session">
+            <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
+            <div class="syl-session-title">${info.title}</div>
+            ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
+            <div class="syl-pending-note">⏳ Marked complete — waiting for faculty approval</div>
+          </div>
+        `;
+      } else {
+        const practicedToday = sess.lastPracticedAt && new Date(sess.lastPracticedAt.seconds*1000).toDateString() === new Date().toDateString();
+        bodyHtml = `
+          <div class="syl-current-session">
+            <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
+            <div class="syl-session-title">${info.title}</div>
+            ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
+            <button class="syl-tick-btn" onclick="tickSessionComplete('${modId}', ${currentNum})">✅ Mark this session complete</button>
+            <button class="syl-practice-btn" onclick="logPracticeSession('${modId}', ${currentNum})" ${practicedToday ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📝 ${practicedToday ? "Practice logged for today ✓" : "I practiced this (not a full session)"}</button>
+            ${sess.practiceCount ? `<div class="syl-practice-count">Practiced ${sess.practiceCount}x so far${sess.lastPracticedAt ? ' · last on ' + new Date(sess.lastPracticedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}${practicedToday ? ' · come back tomorrow for another' : ''}</div>` : ''}
+          </div>
+        `;
+      }
+    }
+
+    // Collapsed history of approved sessions
+    let historyHtml = '';
+    if (approvedCount > 0) {
+      const historyItems = [];
+      for (let n = 1; n <= totalSessions; n++) {
+        if (sessions[n] && sessions[n].approved) {
+          const info = getSyllabusSessionInfo(modId, n);
+          historyItems.push(`<div class="syl-history-item"><span class="hi-check">✅</span> Session ${n}: ${info.title}</div>`);
+        }
+      }
+      historyHtml = `
+        <div class="syl-history-toggle" onclick="toggleSylHistory('${modId}')">View completed sessions (${approvedCount})</div>
+        <div class="syl-history-list" id="sylHistory-${modId}">${historyItems.join('')}</div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="syl-mod-header">
+        <span class="syl-mod-name">${mod.name}</span>
+        <span class="syl-mod-progress-text">${approvedCount}/${totalSessions} sessions</span>
+      </div>
+      <div class="syl-bar-track"><div class="syl-bar-fill" style="width:${pct}%"></div></div>
+      ${bodyHtml}
+      ${historyHtml}
+    `;
+    list.appendChild(card);
+  });
+}
+
+function toggleSylHistory(modId) {
+  const el = document.getElementById('sylHistory-' + modId);
+  if (el) el.classList.toggle('show');
+}
+
+async function tickSessionComplete(modId, sessionNum) {
+  if (!currentStudentDocId) return;
+  try {
+    const studentRef = doc(db, 'cadd_students', currentStudentDocId);
+    const snap = await getDoc(studentRef);
+    if (!snap.exists()) { showToast('Could not find your record', 'error'); return; }
+    const data = snap.data();
+    if (!data.modules || !data.modules[modId] || !data.modules[modId].sessions[sessionNum]) {
+      showToast('Session not found', 'error'); return;
+    }
+    data.modules[modId].sessions[sessionNum] = {
+      ...data.modules[modId].sessions[sessionNum],
+      studentTicked: true,
+      tickedAt: Timestamp.now(),
+      autoTicked: false
+    };
+    await updateDoc(studentRef, { modules: data.modules });
+    currentStudent.modules = data.modules;
+    renderSyllabusSection(data.modules);
+    showToast('Marked complete! Waiting for faculty approval.', 'success');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// Logs a practice attempt for the current (not-yet-completed) session — doesn't touch
+// studentTicked/approved, so it doesn't advance the syllabus. Purely for tracking how much
+// a student is practicing vs how many actual faculty-led sessions they've completed.
+async function logPracticeSession(modId, sessionNum) {
+  if (!currentStudentDocId) return;
+  try {
+    const studentRef = doc(db, 'cadd_students', currentStudentDocId);
+    const snap = await getDoc(studentRef);
+    if (!snap.exists()) { showToast('Could not find your record', 'error'); return; }
+    const data = snap.data();
+    if (!data.modules || !data.modules[modId] || !data.modules[modId].sessions[sessionNum]) {
+      showToast('Session not found', 'error'); return;
+    }
+    const sess = data.modules[modId].sessions[sessionNum];
+
+    // Hard limit: 1 practice log per day per session — re-checked against the freshly
+    // fetched record (not just the cached UI state), so this can't be bypassed by
+    // spamming the button or re-opening the app before the UI refreshes.
+    if (sess.lastPracticedAt) {
+      const last = new Date(sess.lastPracticedAt.seconds * 1000);
+      if (last.toDateString() === new Date().toDateString()) {
+        showToast('You already logged practice for this today — come back tomorrow!', 'error');
+        currentStudent.modules = data.modules;
+        renderSyllabusSection(data.modules);
+        return;
+      }
+    }
+
+    data.modules[modId].sessions[sessionNum] = {
+      ...sess,
+      practiceCount: (sess.practiceCount || 0) + 1,
+      lastPracticedAt: Timestamp.now()
+    };
+    await updateDoc(studentRef, { modules: data.modules });
+    currentStudent.modules = data.modules;
+    renderSyllabusSection(data.modules);
+    showToast('Practice logged! Keep it up 💪', 'success');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.logPracticeSession = logPracticeSession;
+
+async function loadStats() {
+  const q = query(collection(db,'cadd_attendance'), where('studentDocId','==',currentStudent.docId));
+  const snap = await getDocs(q);
+  const records = snap.docs
+    .map(d => ({id:d.id,...d.data()}))
+    .sort((a,b) => b.checkIn.seconds - a.checkIn.seconds)
+    .slice(0, 60);
+
+  let totalHrs = 0; const presentDays = new Set();
+  records.forEach(r => {
+    if (r.checkOut) { totalHrs += (r.checkOut.seconds - r.checkIn.seconds)/3600; }
+    presentDays.add(new Date(r.checkIn.seconds*1000).toDateString());
+  });
+
+  // Own approved leave date-ranges — days inside these don't count as "absent"; they show
+  // as "on leave" instead, both in the stat and in the streak strip below.
+  let myLeaveRanges = [];
+  try {
+    const lq = query(collection(db,'cadd_leave_requests'), where('studentDocId','==',currentStudent.docId));
+    const lsnap = await getDocs(lq);
+    myLeaveRanges = lsnap.docs
+      .map(d => d.data())
+      .filter(r => r.status === 'approved' && r.dateFrom && r.dateTo)
+      .map(r => ({ from: new Date(r.dateFrom+'T00:00:00'), to: new Date(r.dateTo+'T23:59:59') }));
+  } catch(e) { console.error('Own leave ranges fetch error:', e); }
+  const isOnLeave = (d) => myLeaveRanges.some(r => d >= r.from && d <= r.to);
+
+  // Uses trackingStartDate (when THIS app started tracking them) rather than admissionDate
+  // (their real-world join date, which could predate this app and inflate "days absent" —
+  // same fix as the admin panel's student-detail modal).
+  const baseDate = currentStudent.trackingStartDate
+    ? new Date(currentStudent.trackingStartDate.seconds*1000)
+    : (currentStudent.admissionDate ? new Date(currentStudent.admissionDate.seconds*1000) : new Date());
+  baseDate.setHours(0,0,0,0);
+
+  // Schedule-aware: only count the student's OWN scheduled weekdays (e.g. Wed/Fri/Sat) as
+  // days they were expected to attend. Previously every calendar day from baseDate to today
+  // was counted as a "total day", so a student scheduled for Wed/Fri/Sat who attended every
+  // one of those days would still show as "absent" for the Sun/Mon/Tue/Thu in between.
+  const scheduledDays = Array.isArray(currentStudent.attendanceDays) ? currentStudent.attendanceDays.map(Number) : [];
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  let totalScheduledDays = 0;
+  { const cursor = new Date(baseDate);
+    while (cursor <= today0) {
+      if ((!scheduledDays.length || scheduledDays.includes(cursor.getDay())) && !isOnLeave(cursor)) totalScheduledDays++;
+      cursor.setDate(cursor.getDate()+1);
+    }
+  }
+  const absentDays = Math.max(0, totalScheduledDays - presentDays.size);
+
+  document.getElementById('statDays').textContent = presentDays.size;
+  document.getElementById('statAbsent').textContent = absentDays;
+  document.getElementById('statHours').textContent = totalHrs.toFixed(1)+'h';
+
+  // Streak
+  const days=['S','M','T','W','T','F','S'];
+  const row = document.getElementById('streakRow'); row.innerHTML='';
+  for (let i=13;i>=0;i--) {
+    const d=new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    const isScheduled = !scheduledDays.length || scheduledDays.includes(d.getDay());
+    const isPresent=presentDays.has(d.toDateString()), isToday=i===0;
+    const div=document.createElement('div');
+    if (isScheduled && !isPresent && isOnLeave(d)) {
+      div.className='streak-day on-leave';
+    } else if (!isScheduled) {
+      div.className='streak-day not-scheduled';
+    } else {
+      div.className='streak-day '+(isToday?(isPresent?'today-present':'today-absent'):(isPresent?'present':'absent'));
+    }
+    div.textContent=days[d.getDay()];
+    div.title=d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+(isScheduled?'':' (not scheduled)');
+    row.appendChild(div);
+  }
+
+  // History
+  const list=document.getElementById('historyList'); list.innerHTML='';
+  const done=records.filter(r=>r.checkOut).slice(0,8);
+  if (!done.length) { list.innerHTML='<div class="history-item"><span style="color:var(--text-muted);font-size:13px">No completed sessions yet.</span></div>'; return; }
+  done.forEach(r => {
+    const ci=new Date(r.checkIn.seconds*1000), co=new Date(r.checkOut.seconds*1000);
+    const hrs=((r.checkOut.seconds-r.checkIn.seconds)/3600).toFixed(1);
+    const div=document.createElement('div'); div.className='history-item';
+    div.innerHTML=`<div><div class="h-date">${ci.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</div><div class="h-time">${ci.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})} → ${co.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}${r.autoLogout?' ⚡':''}
+</div></div><div class="h-hrs${r.autoLogout?' auto':''}">${hrs}h</div>`;
+    list.appendChild(div);
+  });
+}
+
+// ── CALENDAR LOG: date-wise session + duration + running total ──
+async function loadCalendarLog() {
+  const card = document.getElementById('calendarLogCard');
+  const list = document.getElementById('calendarLogList');
+  const modules = currentStudent.modules || {};
+  const hasModules = Object.keys(modules).length > 0;
+
+  if (!hasModules) { card.style.display = 'none'; return; }
+
+  // Single equality filter only (no composite index needed) — filter/sort/slice client-side
+  const q = query(collection(db,'cadd_attendance'), where('studentDocId','==',currentStudent.docId));
+  let records = [];
+  try {
+    const snap = await getDocs(q);
+    records = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => r.checkOut != null)
+      .sort((a,b) => b.checkOut.seconds - a.checkOut.seconds)
+      .slice(0, 30);
+  } catch(e) {
+    console.error('Calendar log query error:', e);
+    card.style.display = 'none';
+    return;
+  }
+
+  if (!records.length) { card.style.display = 'none'; return; }
+
+  // Build a flat list of all ticked sessions (any status) with their timestamps, to match against attendance dates
+  const tickedEvents = [];
+  Object.entries(modules).forEach(([modId, mod]) => {
+    Object.entries(mod.sessions || {}).forEach(([numStr, sess]) => {
+      if (sess.tickedAt) {
+        tickedEvents.push({ modName: mod.name, sessionNum: parseInt(numStr), date: new Date(sess.tickedAt.seconds * 1000).toDateString() });
+      }
+    });
+  });
+
+  card.style.display = 'block';
+  list.innerHTML = '';
+  let runningTotal = 0;
+
+  records.forEach(r => {
+    const ci = new Date(r.checkIn.seconds * 1000);
+    const co = new Date(r.checkOut.seconds * 1000);
+    const hrs = (r.checkOut.seconds - r.checkIn.seconds) / 3600;
+    runningTotal += hrs;
+
+    const dayStr = ci.toDateString();
+    const matchedTick = tickedEvents.find(t => t.date === dayStr);
+    const sessionLabel = matchedTick ? `${matchedTick.modName} · Session ${matchedTick.sessionNum}` : '';
+
+    const div = document.createElement('div');
+    div.className = 'cal-log-item';
+    div.innerHTML = `
+      <div>
+        <div class="cal-log-date">${ci.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</div>
+        ${sessionLabel ? `<div class="cal-log-session">${sessionLabel}</div>` : ''}
+      </div>
+      <div class="cal-log-hours">${hrs.toFixed(1)}h</div>
+    `;
+    list.appendChild(div);
+  });
+
+  document.getElementById('calLogRunningTotal').textContent = runningTotal.toFixed(1) + 'h';
+}
+
+// ── AUTO-TICK ON LOGOUT (auto or manual): guarantees today's session isn't lost ──
+async function autoTickCurrentSession() {
+  if (!currentStudentDocId) return;
+  try {
+    const studentRef = doc(db, 'cadd_students', currentStudentDocId);
+    const snap = await getDoc(studentRef);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (!data.modules) return;
+
+    let changed = false;
+    Object.entries(data.modules).forEach(([modId, mod]) => {
+      const totalSessions = mod.totalSessions || Object.keys(mod.sessions || {}).length;
+      // Find first un-approved session for this module
+      for (let n = 1; n <= totalSessions; n++) {
+        const sess = mod.sessions[n];
+        if (!sess || !sess.approved) {
+          if (sess && !sess.studentTicked) {
+            mod.sessions[n] = { ...sess, studentTicked: true, tickedAt: Timestamp.now(), autoTicked: true };
+            changed = true;
+          }
+          break; // only touch the first unlocked session per module
+        }
+      }
+    });
+
+    if (changed) {
+      await updateDoc(studentRef, { modules: data.modules });
+      currentStudent.modules = data.modules;
+    }
+  } catch(e) { console.error('Auto-tick error:', e); }
+}
+
+// ── NON-BLOCKING LOGOUT REMINDER (manual checkout only) ──
+function checkAndShowLogoutReminder() {
+  const modules = currentStudent.modules || {};
+  const modIds = Object.keys(modules);
+  if (!modIds.length) return;
+
+  const untickedModules = [];
+  modIds.forEach(modId => {
+    const mod = modules[modId];
+    const totalSessions = mod.totalSessions || Object.keys(mod.sessions || {}).length;
+    for (let n = 1; n <= totalSessions; n++) {
+      const sess = mod.sessions[n];
+      if (!sess || !sess.approved) {
+        if (!sess || !sess.studentTicked) untickedModules.push(mod.name);
+        break;
+      }
+    }
+  });
+
+  if (untickedModules.length) {
+    const reminder = document.getElementById('logoutReminderToast');
+    reminder.textContent = `📝 Don't forget to mark today's session complete for: ${untickedModules.join(', ')}`;
+    reminder.classList.add('show');
+    setTimeout(() => reminder.classList.remove('show'), 6000);
+  }
+}
+
+async function checkActiveSession() {
+  try {
+    const q = query(collection(db,'cadd_attendance'), where('studentDocId','==',currentStudent.docId));
+    const snap = await getDocs(q);
+    const openDocs = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => r.checkOut == null)
+      .sort((a,b) => b.checkIn.seconds - a.checkIn.seconds);
+    if (openDocs.length) {
+      const allActive = openDocs;
+      const mostRecent = allActive[0];
+      const orphaned = allActive.slice(1); // any older "active" records are stale/orphaned
+
+      // Clean up orphaned sessions silently — these are leftover from failed/interrupted check-ins
+      for (const orphan of orphaned) {
+        await updateDoc(doc(db,'cadd_attendance',orphan.id), {
+          checkOut: orphan.checkIn, // zero-duration close, clearly marked
+          autoLogout: true,
+          orphanedCleanup: true
+        });
+      }
+
+      activeSession = { id: mostRecent.id, ...mostRecent };
+      const elapsed=(Date.now()-activeSession.checkIn.seconds*1000)/36e5;
+      if (elapsed >= AUTO_LOGOUT_HRS) {
+        const autoTime=new Date(activeSession.checkIn.seconds*1000+AUTO_LOGOUT_HRS*36e5);
+        await updateDoc(doc(db,'cadd_attendance',mostRecent.id),{checkOut:Timestamp.fromDate(autoTime),autoLogout:true});
+        await autoTickCurrentSession();
+        activeSession=null; showToast('Previous session auto-logged out after 3 hours ⚡','warning');
+        await loadStats(); return;
+      }
+      const ci=new Date(activeSession.checkIn.seconds*1000);
+      document.getElementById('sessionBanner').style.display='flex';
+      document.getElementById('sessionStartTime').textContent='Checked in at '+ci.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      const btn=document.getElementById('mainActionBtn');
+      btn.className='btn-checkout'; btn.textContent='🔴 Mark Log Out';
+      document.getElementById('actionLabel').textContent='Your session is active. Log out when you leave the centre.';
+    } else {
+      activeSession=null;
+      // Check if student already completed today's session (done for the day)
+      const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+      const todayQ=query(collection(db,'cadd_attendance'),where('studentDocId','==',currentStudent.docId));
+      const todaySnap=await getDocs(todayQ);
+      const doneToday = todaySnap.docs.some(d=>{
+        const r=d.data();
+        return r.checkIn.seconds*1000 >= todayStart.getTime() && r.checkOut!==null;
+      });
+      if (doneToday) {
+        document.getElementById('actionCard').style.display='none';
+        document.getElementById('doneForDayBanner').style.display='flex';
+      }
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function handleAttendanceAction() {
+  if (currentStudent.status==='on_leave') { showToast('You are on leave. Contact admin.','error'); return; }
+  const allowedDays = currentStudent.attendanceDays || [];
+  const todayDay = new Date().getDay();
+  if (allowedDays.length > 0 && !allowedDays.includes(todayDay) && !activeSession) {
+    showToast("Today isn't your scheduled attendance day.", 'error'); return;
+  }
+  const btn=document.getElementById('mainActionBtn');
+  btn.disabled=true; btn.textContent=activeSession?'Logging out…':'Verifying location…';
+  try {
+    const pos=await getLocation();
+    const dist=haversine(pos.lat,pos.lng,CENTRE_LAT,CENTRE_LNG);
+    if (dist>RADIUS_M) {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      const accNote = pos.accuracy ? ` (GPS accuracy: ±${Math.round(pos.accuracy)}m)` : '';
+      showToast(`You are ${Math.round(dist)}m away. Must be within ${RADIUS_M}m of JD Institute (Vashi).${accNote}`,'error');
+
+      const debugBox = document.getElementById('debugLocBox');
+      debugBox.style.display = 'block';
+      debugBox.innerHTML = `
+        <strong>Debug Info (for testing)</strong><br>
+        Your location: ${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}<br>
+        Target location: ${CENTRE_LAT.toFixed(6)}, ${CENTRE_LNG.toFixed(6)}<br>
+        Distance: ${Math.round(dist)}m (allowed: ${RADIUS_M}m)<br>
+        GPS accuracy: ${pos.accuracy ? '±'+Math.round(pos.accuracy)+'m' : 'unknown'}<br>
+        Test mode: ${TEST_MODE ? 'ON (home coords)' : 'OFF (Vashi coords)'}
+      `;
+
+      // Show a map with the detected pin so it's visually obvious where it placed you
+      const mapBox = document.getElementById('mapPreviewBox');
+      const mapFrame = document.getElementById('locMapFrame');
+      const span = 0.01; // zoom window in degrees, roughly shows both points if close
+      const minLat = Math.min(pos.lat, CENTRE_LAT) - span;
+      const maxLat = Math.max(pos.lat, CENTRE_LAT) + span;
+      const minLng = Math.min(pos.lng, CENTRE_LNG) - span;
+      const maxLng = Math.max(pos.lng, CENTRE_LNG) + span;
+      mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng},${minLat},${maxLng},${maxLat}&layer=mapnik&marker=${pos.lat},${pos.lng}`;
+      mapBox.style.display = 'block';
+
+      btn.disabled=false;
+      return;
+    }
+    document.getElementById('locationDenied').style.display='none';
+    document.getElementById('actionCard').style.display='block';
+
+    if (activeSession) {
+      await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.now(),autoLogout:false});
+      showToast('Logged out successfully! See you next time 👋','success');
+      activeSession=null;
+      document.getElementById('sessionBanner').style.display='none';
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('doneForDayBanner').style.display='flex';
+      btn.className='btn-checkin'; btn.textContent='✅ Mark Attendance';
+      document.getElementById('actionLabel').textContent='Tap below to mark your attendance for today';
+      checkAndShowLogoutReminder();
+    } else {
+      const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+      const q=query(collection(db,'cadd_attendance'),where('studentDocId','==',currentStudent.docId));
+      const ex=await getDocs(q);
+      const todaysDocs = ex.docs.filter(d=>d.data().checkIn.seconds*1000 >= todayStart.getTime());
+      if (todaysDocs.some(d=>d.data().checkOut!==null)) {
+        showToast("Today's session already completed!",'warning'); btn.disabled=false; btn.textContent='✅ Mark Attendance'; return;
+      }
+      const newDoc=await addDoc(collection(db,'cadd_attendance'),{
+        studentDocId:currentStudent.docId, studentId:currentStudent.studentId,
+        studentName:currentStudent.name, checkIn:Timestamp.now(), checkOut:null,
+        autoLogout:false, lat:pos.lat, lng:pos.lng,
+        course:currentStudent.course||'', slot:currentStudent.slot||'', faculty:currentStudent.faculty||''
+      });
+      activeSession={id:newDoc.id};
+      const now=new Date();
+      document.getElementById('sessionBanner').style.display='flex';
+      document.getElementById('sessionStartTime').textContent='Checked in at '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      btn.className='btn-checkout'; btn.textContent='🔴 Mark Log Out';
+      document.getElementById('actionLabel').textContent='Your session is active. Log out when you leave the centre.';
+      showToast('Attendance marked! Have a productive session 🎉','success');
+    }
+    await loadStats();
+  } catch(e) {
+    console.error('Attendance action error:', e);
+    if (e.message === 'TIMEOUT_NO_RESPONSE') {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      showToast('Location took too long to respond. Tap "Try Again".','error');
+    } else if (e.code===1) {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      showToast('Location permission denied. Please allow location access.','error');
+    } else if (e.code===2) {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      showToast('Could not determine your location. Try moving near a window or use mobile data.','error');
+    } else if (e.code===3) {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      showToast('Location request timed out. Please try again.','error');
+    } else {
+      document.getElementById('actionCard').style.display='none';
+      document.getElementById('locationDenied').style.display='block';
+      showToast('Error: '+e.message,'error');
+    }
+  }
+  btn.disabled=false;
+}
+
+function retryLocation() {
+  document.getElementById('locationDenied').style.display='none';
+  document.getElementById('actionCard').style.display='block';
+}
+
+function doLogout() {
+  currentStudent=null; activeSession=null; currentStudentDocId=null;
+  sessionStorage.removeItem('cadd_student_docId');
+  if (clockInterval) clearInterval(clockInterval);
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loginScreen').style.display='block';
+  document.getElementById('loginBtn').disabled=false;
+  document.getElementById('loginBtn').textContent='Login →';
+  document.getElementById('loginId').value='';
+  document.getElementById('loginPw').value='';
+}
+
+document.getElementById('loginPw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('loginId').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// Try restoring session on page load (survives refresh, not tab close)
+tryRestoreSession();
+</script>
+
+<!-- PWA: Register Service Worker (separate non-module script, runs independently) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => { reg.update(); })
+        .catch(err => console.warn('Service worker registration failed:', err));
+
+      let hasReloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hasReloaded) return;
+        hasReloaded = true;
+        window.location.reload();
+      });
+    });
+  }
+
+  // ── INSTALL PROMPT LOGIC ──
+  let deferredInstallPrompt = null;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  function showInstallButton() {
+    if (isStandalone) return; // already installed, don't show
+    const btn = document.getElementById('installBtn');
+    if (btn) btn.classList.add('show');
+  }
+
+  // Chrome/Android/Desktop: capture the native install prompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallButton();
+  });
+
+  // iOS: no beforeinstallprompt event exists, so always show button (manual instructions)
+  if (isIOS && !isStandalone) {
+    showInstallButton();
+  }
+
+  // Hide button once installed
+  window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('installBtn');
+    if (btn) btn.classList.remove('show');
+    deferredInstallPrompt = null;
+  });
+
+  function openInstallModal() {
+    const overlay = document.getElementById('installModalOverlay');
+    const iosSteps = document.getElementById('iosSteps');
+    const modalText = document.getElementById('installModalText');
+    const modalBtn = document.getElementById('installModalBtn');
+
+    if (isIOS) {
+      iosSteps.style.display = 'block';
+      modalText.style.display = 'none';
+      modalBtn.style.display = 'none';
+    } else {
+      iosSteps.style.display = 'none';
+      modalText.style.display = 'block';
+      modalBtn.style.display = 'block';
+    }
+    overlay.classList.add('show');
+  }
+
+  function closeInstallModal() {
+    document.getElementById('installModalOverlay').classList.remove('show');
+  }
+
+  async function triggerInstall() {
+    if (!deferredInstallPrompt) {
+      closeInstallModal();
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    closeInstallModal();
+    if (choice.outcome === 'accepted') {
+      document.getElementById('installBtn').classList.remove('show');
+    }
+  }
+
+  window.openInstallModal = openInstallModal;
+  window.closeInstallModal = closeInstallModal;
+  window.triggerInstall = triggerInstall;
+
+  document.getElementById('installBtn')?.addEventListener('click', openInstallModal);
+  document.getElementById('installModalOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'installModalOverlay') closeInstallModal();
+  });
+</script>
+</body>
+</html>
