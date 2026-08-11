@@ -607,10 +607,10 @@
             <label>Course Track *</label>
             <select id="ns-course">
               <option value="">Select Course</option>
-              <option>Interiors</option><option>Mechanical</option><option>Civil</option>
-              <option>Architecture</option><option>Basic CAD</option><option>VFX</option>
               <!-- TODO: add JD Institute of Fashion Technology course list -->
               <option>Others</option>
+            </select>
+          </div>
           <div class="f-group">
             <label>Faculty</label>
             <select id="ns-faculty"><option value="">Select Faculty</option></select>
@@ -680,12 +680,9 @@
         <input type="date" id="attDateTo" onchange="filterAttendance()"/>
         <select id="attCourseFilter" onchange="filterAttendance()">
           <option value="">All Courses</option>
-          <option>Interiors</option><option>Mechanical</option><option>Civil</option>
-          <option>Architecture</option><option>Basic CAD</option><option>VFX</option>
-          <option>Animation</option><option>Gaming</option><option>Graphics</option>
-          <option>3D Visualisation</option><option>Others</option>
-        <!-- TODO: add JD Institute of Fashion Technology course list -->
-        <option>Others</option>
+          <!-- TODO: add JD Institute of Fashion Technology course list -->
+          <option>Others</option>
+        </select>
         <select id="attSlotFilter" onchange="filterAttendance()">
           <option value="">All Slots</option>
         </select>
@@ -832,14 +829,10 @@
             <div class="f-group f-span2"><label>Email</label><input type="email" id="ed-email"/></div>
             <div class="f-group"><label>Course</label>
               <select id="ed-course">
-                <option>Interiors</option><option>Mechanical</option><option>Civil</option>
-                <option>Architecture</option><option>Basic CAD</option><option>VFX</option>
-                <option>Animation</option><option>Gaming</option><option>Graphics</option>
-                <option>3D Visualisation</option><option>Others</option>
+                <!-- TODO: add JD Institute of Fashion Technology course list -->
+                <option>Others</option>
               </select>
             </div>
-            <!-- TODO: add JD Institute of Fashion Technology course list -->
-            <option>Others</option>
             <div class="f-group"><label>App Start Date <span style="color:var(--text3);font-weight:400">(streak/absence tracking begins from here)</span></label><input type="date" id="ed-trackingStartDate"/></div>
             <div class="f-group"><label>Status</label>
               <select id="ed-status">
@@ -2678,9 +2671,12 @@ async function saveNewStudent() {
   if(!name||!phone||!email||!course||studentId==='—'){
     showToast('Fill all required fields and generate ID','error'); return;
   }
-  if(Object.keys(modules).length===0){
+  if(Object.keys(modules).length===0 && MODULE_CATALOGUE.length>0){
     showToast('Select at least one software module','error'); return;
   }
+  // NOTE: module selection is skipped above while MODULE_CATALOGUE is empty (no JD
+  // courses added yet). The moment real modules are added to MODULE_CATALOGUE, this
+  // requirement re-activates automatically — nothing to remember to undo later.
   if(attendanceDays.length===0){
     showToast('Select at least one attendance day','error'); return;
   }
