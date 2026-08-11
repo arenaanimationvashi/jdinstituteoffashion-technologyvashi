@@ -1073,7 +1073,7 @@ document.getElementById('gateEmail').addEventListener('keydown', e => { if(e.key
 // Extra safeguard on top of Firebase Auth itself: even if another user account ever gets
 // created (accidentally or otherwise) in this Firebase project's Authentication list, only
 // THIS specific UID is allowed into the admin panel. Anyone else gets signed out immediately.
-const ALLOWED_ADMIN_UIDS = ['ZDwyoGgGe5dThPRGYJKNBbvSuLQ2'];
+const ALLOWED_ADMIN_UIDS = ['ZDwyoGgGe5dThPRGYJKNBbvSuLQ2', 'xC8IR24sFdf7ISPAu99e3IRriU33'];
 
 // Firebase Auth persists the session across reloads by default, so this fires immediately
 // on load if already signed in — no separate "remember me" logic needed.
@@ -2979,7 +2979,7 @@ async function sendWelcomeEmail(docId, studentData) {
       student_id: s.studentId,
       student_password: s.password,
       student_course: s.course || '—',
-      login_url: 'https://YOUR-JD-GITHUB-USERNAME.github.io/YOUR-JD-REPO/' // TODO: update to JD's GitHub Pages URL
+      login_url: 'https://arenaanimationvashi.github.io/jdinstituteoffashion-technologyvashi/'
     });
     showToast('Welcome email sent to ' + s.email, 'success');
   } catch(e) {
