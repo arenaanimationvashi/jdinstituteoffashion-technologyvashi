@@ -358,8 +358,6 @@
         <input type="text" id="searchInput" placeholder="Search by name, ID or phone…" oninput="filterStudents()"/>
         <select id="filterCourse" onchange="filterStudents()">
           <option value="">All Courses</option>
-          <!-- TODO: add JD Institute of Fashion Technology course list -->
-          <option>Others</option>
         </select>
         <select id="filterStatus" onchange="filterStudents()">
           <option value="">All Status</option>
@@ -605,10 +603,8 @@
           </div>
           <div class="f-group">
             <label>Course Track *</label>
-            <select id="ns-course">
+            <select id="ns-course" onchange="handleCourseChange('ns')">
               <option value="">Select Course</option>
-              <!-- TODO: add JD Institute of Fashion Technology course list -->
-              <option>Others</option>
             </select>
           </div>
           <div class="f-group">
@@ -621,7 +617,7 @@
           </div>
           <div class="f-group">
             <label>Admission Date</label>
-            <input type="date" id="ns-admDate" onchange="autoFillValidityDate()"/>
+            <input type="date" id="ns-admDate" onchange="autoFillValidityDate('ns')"/>
           </div>
           <div class="f-group">
             <label>Course Validity End Date</label>
@@ -680,8 +676,6 @@
         <input type="date" id="attDateTo" onchange="filterAttendance()"/>
         <select id="attCourseFilter" onchange="filterAttendance()">
           <option value="">All Courses</option>
-          <!-- TODO: add JD Institute of Fashion Technology course list -->
-          <option>Others</option>
         </select>
         <select id="attSlotFilter" onchange="filterAttendance()">
           <option value="">All Slots</option>
@@ -820,9 +814,8 @@
             <div class="f-group"><label>Phone</label><input type="tel" id="ed-phone"/></div>
             <div class="f-group f-span2"><label>Email</label><input type="email" id="ed-email"/></div>
             <div class="f-group"><label>Course</label>
-              <select id="ed-course">
-                <!-- TODO: add JD Institute of Fashion Technology course list -->
-                <option>Others</option>
+              <select id="ed-course" onchange="handleCourseChange('ed')">
+                <option value="">Select Course</option>
               </select>
             </div>
             <div class="f-group"><label>Faculty</label>
@@ -831,7 +824,7 @@
             <div class="f-group"><label>Slot</label>
               <select id="ed-slot"><option value="">Select Slot</option></select>
             </div>
-            <div class="f-group"><label>Admission Date</label><input type="date" id="ed-admDate"/></div>
+            <div class="f-group"><label>Admission Date</label><input type="date" id="ed-admDate" onchange="autoFillValidityDate('ed')"/></div>
             <div class="f-group"><label>Course Validity End Date</label><input type="date" id="ed-validityDate"/></div>
             <div class="f-group"><label>App Start Date <span style="color:var(--text3);font-weight:400">(streak/absence tracking begins from here)</span></label><input type="date" id="ed-trackingStartDate"/></div>
             <div class="f-group"><label>Status</label>
@@ -948,15 +941,55 @@ const AUTO_LOGOUT_HRS = 3; // same rule as the student app — used to auto-clos
 let allStudents = [], allAttendance = [], slots = [];
 let allFaculty = [];
 let editingStudentId = null;
+let editingStudentModules = {};
 let ns_selectedDays = new Set();
 let ed_selectedDays = new Set();
 
+// Program catalogue — JD Institute of Fashion Technology's real program list, grouped
+// by stream (Fashion / Interiors). durationMonths drives auto-calculation of the
+// Course Validity End Date from the Admission Date, per-program (see computeValidityDate).
+const PROGRAM_CATALOGUE = {
+  'Fashion': [
+    { id: 'fashion_bdes',      name: 'B.Des in Fashion Designing',              durationMonths: 48 },
+    { id: 'fashion_bsc',       name: 'B.Sc in Fashion Designing',               durationMonths: 36 },
+    { id: 'fashion_adv_dip',   name: 'Advance Diploma in Fashion Designing',    durationMonths: 36 },
+    { id: 'fashion_dip',       name: 'Diploma in Fashion Designing',            durationMonths: 12 },
+    { id: 'fashion_short_dip', name: 'Short Term Diploma in Fashion Designing', durationMonths: 6  },
+    { id: 'fashion_biz_dip',   name: 'Diploma in Fashion Business Management',  durationMonths: 12 },
+    { id: 'fashion_vm',        name: 'Visual Merchandising',                    durationMonths: 6  },
+    { id: 'fashion_styling',   name: 'Fashion Styling',                         durationMonths: 3  }
+  ],
+  'Interiors': [
+    { id: 'interior_bdes',      name: 'B.Des in Interior Designing',           durationMonths: 48 },
+    { id: 'interior_bsc',       name: 'B.Sc in Interior Designing',            durationMonths: 36 },
+    { id: 'interior_adv_dip',   name: 'Advance Diploma in Interior Designing', durationMonths: 36 },
+    { id: 'interior_dip',       name: 'Diploma in Interior Designing',         durationMonths: 12 },
+    { id: 'interior_short_dip', name: 'Short Term in Interior Designing',      durationMonths: 6  }
+  ]
+};
+function findProgramByName(name) {
+  for (const stream in PROGRAM_CATALOGUE) {
+    const p = PROGRAM_CATALOGUE[stream].find(p => p.name === name);
+    if (p) return { ...p, stream };
+  }
+  return null;
+}
+
 // Module/course catalogue (category + default duration in weeks).
-// TODO: populate with JD Institute of Fashion Technology's actual courses once provided.
-// Structure kept intact — same shape (id, name, category, defaultWeeks) so it plugs
-// straight back into the existing enrollment UI.
-const MODULE_CATALOGUE = [
-];
+// PLACEHOLDER — one "Introduction" module per program, auto-derived from PROGRAM_CATALOGUE
+// above, so every program has something to check into and assign faculty to (this is what
+// drives faculty-portal visibility in faculty.html). Swap these out for the real JD
+// session-by-session syllabus once it's provided — SYLLABUS_CATALOGUE below can stay
+// empty until then, since getSyllabusForModule() auto-generates generic "Session N"
+// placeholders from weeks.
+const MODULE_CATALOGUE = Object.entries(PROGRAM_CATALOGUE).flatMap(([stream, programs]) =>
+  programs.map(p => ({
+    id: p.id,
+    name: p.name + ' — Introduction',
+    category: stream,
+    defaultWeeks: Math.max(4, Math.round(p.durationMonths * 4.345))
+  }))
+);
 
 // Real syllabus content — session-by-session breakdown for modules that have a defined curriculum.
 // Modules not listed here fall back to a generic "Session N" placeholder until their syllabus is added.
@@ -966,6 +999,7 @@ const MODULE_CATALOGUE = [
 // fall back to generic "Session N" placeholders (see getSyllabusForModule below).
 const SYLLABUS_CATALOGUE = {
 };
+
 
 // Helper: get session list for a module — real syllabus if available, else generic placeholders
 function getSyllabusForModule(modId, weeks) {
@@ -1116,10 +1150,15 @@ async function init() {
 }
 
 // ── MODULE PICKER ──
-function renderModulePicker(containerId, checkedMap) {
+function renderModulePicker(containerId, checkedMap, courseId) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
-  MODULE_CATALOGUE.forEach(mod => {
+  const list = courseId ? MODULE_CATALOGUE.filter(m => m.id === courseId) : [];
+  if (list.length === 0) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:6px 0">Select a course above to show its module here.</div>';
+    return;
+  }
+  list.forEach(mod => {
     const isChecked = checkedMap && checkedMap[mod.id];
     const weeks = isChecked ? checkedMap[mod.id].weeks : mod.defaultWeeks;
     const currentFacultyId = isChecked && checkedMap[mod.id].facultyAssignments && checkedMap[mod.id].facultyAssignments.length
@@ -1276,6 +1315,26 @@ function populateDropdowns() {
     allFaculty.filter(f=>f.status!=='deactivated').forEach(f=>{
       sel.innerHTML+=`<option value="${f.docId}">${f.name}</option>`;
     });
+    sel.value=cur;
+  });
+  // Course dropdowns: built from PROGRAM_CATALOGUE, grouped by stream (Fashion / Interiors).
+  // ns-course/ed-course need the "select a course" placeholder + onchange wiring to the
+  // module picker + validity date calc; the two filter dropdowns need an "All Courses" option.
+  const courseGroupsHtml = Object.entries(PROGRAM_CATALOGUE).map(([stream, programs]) =>
+    `<optgroup label="${stream}">` +
+    programs.map(p => `<option value="${p.name}">${p.name} (${p.durationMonths % 12 === 0 ? (p.durationMonths/12)+' Yr'+(p.durationMonths/12>1?'s':'') : p.durationMonths+' Months'})</option>`).join('') +
+    `</optgroup>`
+  ).join('') + '<option value="Others">Others</option>';
+  ['ns-course','ed-course'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Select Course</option>' + courseGroupsHtml;
+    sel.value=cur;
+  });
+  ['filterCourse','attCourseFilter'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">All Courses</option>' + courseGroupsHtml;
     sel.value=cur;
   });
 }
@@ -2613,19 +2672,37 @@ function generateId() {
   document.getElementById('genPwDisplay').textContent=pw;
 }
 
-// Suggests a validity end date of "admission date + 1 year" whenever the admission date
-// changes — only if the validity field is still empty, so it never overwrites a value the
-// admin has already typed in manually.
-function autoFillValidityDate() {
-  const admVal = document.getElementById('ns-admDate').value;
-  const validityField = document.getElementById('ns-validityDate');
-  if (admVal && !validityField.value) {
-    const d = new Date(admVal);
-    d.setFullYear(d.getFullYear() + 1);
-    validityField.value = d.toISOString().slice(0, 10);
+// Suggests a validity end date of "admission date + program duration" whenever the
+// admission date or course changes — only if the validity field is still empty, so it
+// never overwrites a value the admin has already typed in manually.
+function computeValidityDate(admDateStr, courseName) {
+  const program = findProgramByName(courseName);
+  if (!admDateStr || !program) return null;
+  const d = new Date(admDateStr);
+  d.setMonth(d.getMonth() + program.durationMonths);
+  return d.toISOString().slice(0, 10);
+}
+function autoFillValidityDate(prefix) {
+  const admVal = document.getElementById(prefix + '-admDate').value;
+  const courseVal = document.getElementById(prefix + '-course').value;
+  const validityField = document.getElementById(prefix + '-validityDate');
+  if (!validityField.value) {
+    const computed = computeValidityDate(admVal, courseVal);
+    if (computed) validityField.value = computed;
   }
 }
 window.autoFillValidityDate = autoFillValidityDate;
+
+// Fires when the Course dropdown changes: re-suggests the validity date for the newly
+// selected program's duration, and re-renders the module picker filtered to that program.
+function handleCourseChange(prefix) {
+  autoFillValidityDate(prefix);
+  const courseVal = document.getElementById(prefix + '-course').value;
+  const program = findProgramByName(courseVal);
+  const checkedMap = prefix === 'ed' ? editingStudentModules : null;
+  renderModulePicker(prefix + '-modulePicker', checkedMap, program ? program.id : null);
+}
+window.handleCourseChange = handleCourseChange;
 
 async function saveNewStudent() {
   const name=document.getElementById('ns-name').value.trim();
@@ -2734,7 +2811,9 @@ async function openStudentModal(docId) {
   ed_selectedDays = new Set(s.attendanceDays || []);
   renderWeekdayPicker('ed-weekdayPicker', ed_selectedDays);
 
-  renderModulePicker('ed-modulePicker', s.modules || {});
+  editingStudentModules = s.modules || {};
+  const edProgram = findProgramByName(s.course);
+  renderModulePicker('ed-modulePicker', editingStudentModules, edProgram ? edProgram.id : null);
   renderSyllabusProgress(s.modules || {});
 
   document.getElementById('studentModal').style.display='flex';
