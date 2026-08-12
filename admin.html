@@ -104,7 +104,7 @@
 
     /* MODAL */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .modal{background:var(--dark);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:540px;max-height:90vh;overflow-y:auto;}
+    .modal{background:var(--dark);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
     .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
     .modal-header h3{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;}
     .modal-close{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1;}
@@ -117,6 +117,7 @@
     .f-group{display:flex;flex-direction:column;gap:6px;}
     .f-group label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;}
     .f-group input,.f-group select,.f-group textarea{
+      width:100%;max-width:100%;box-sizing:border-box;
       background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;
       color:#fff;padding:10px 13px;font-size:13px;font-family:'Inter',sans-serif;outline:none;
     }
@@ -602,9 +603,15 @@
             <input type="email" id="ns-email" placeholder="student@email.com"/>
           </div>
           <div class="f-group">
+            <label>Stream *</label>
+            <select id="ns-stream" onchange="handleStreamChange('ns')">
+              <option value="">Select Stream</option>
+            </select>
+          </div>
+          <div class="f-group">
             <label>Course Track *</label>
             <select id="ns-course" onchange="handleCourseChange('ns')">
-              <option value="">Select Course</option>
+              <option value="">Select stream first</option>
             </select>
           </div>
           <div class="f-group">
@@ -622,7 +629,7 @@
           <div class="f-group">
             <label>Course Validity End Date</label>
             <input type="date" id="ns-validityDate"/>
-            <div class="module-hint" style="margin-top:4px">Auto-suggested as 1 year from admission — change if the course duration is different.</div>
+            <div class="module-hint" style="margin-top:4px">Auto-suggested from the selected course's duration — change if needed.</div>
           </div>
           <div class="f-group f-span2">
             <label>Software Modules *</label>
@@ -813,9 +820,14 @@
             <div class="f-group"><label>Full Name</label><input type="text" id="ed-name"/></div>
             <div class="f-group"><label>Phone</label><input type="tel" id="ed-phone"/></div>
             <div class="f-group f-span2"><label>Email</label><input type="email" id="ed-email"/></div>
+            <div class="f-group"><label>Stream</label>
+              <select id="ed-stream" onchange="handleStreamChange('ed')">
+                <option value="">Select Stream</option>
+              </select>
+            </div>
             <div class="f-group"><label>Course</label>
               <select id="ed-course" onchange="handleCourseChange('ed')">
-                <option value="">Select Course</option>
+                <option value="">Select stream first</option>
               </select>
             </div>
             <div class="f-group"><label>Faculty</label>
@@ -974,6 +986,27 @@ function findProgramByName(name) {
   }
   return null;
 }
+function formatDuration(months) {
+  return months % 12 === 0 ? (months/12) + ' Yr' + (months/12>1?'s':'') : months + ' Months';
+}
+// Fires when the Stream dropdown changes: repopulates the Course dropdown with only that
+// stream's programs (real cascading select — nothing shown for the other stream), then
+// re-runs the course-change handler since the Course value just got reset/changed.
+function refreshCourseOptions(prefix, presetValue) {
+  const streamVal = document.getElementById(prefix + '-stream').value;
+  const courseSel = document.getElementById(prefix + '-course');
+  const cur = presetValue !== undefined ? presetValue : courseSel.value;
+  const programs = PROGRAM_CATALOGUE[streamVal] || [];
+  courseSel.innerHTML = '<option value="">' + (streamVal ? 'Select Course' : 'Select stream first') + '</option>' +
+    programs.map(p => `<option value="${p.name}">${p.name} (${formatDuration(p.durationMonths)})</option>`).join('') +
+    (streamVal ? '<option value="Others">Others</option>' : '');
+  if ([...courseSel.options].some(o => o.value === cur)) courseSel.value = cur;
+}
+function handleStreamChange(prefix) {
+  refreshCourseOptions(prefix);
+  handleCourseChange(prefix);
+}
+window.handleStreamChange = handleStreamChange;
 
 // Module/course catalogue (category + default duration in weeks).
 // PLACEHOLDER — one "Introduction" module per program, auto-derived from PROGRAM_CATALOGUE
@@ -991,14 +1024,14 @@ const MODULE_CATALOGUE = Object.entries(PROGRAM_CATALOGUE).flatMap(([stream, pro
   }))
 );
 
-// Real syllabus content — session-by-session breakdown for modules that have a defined curriculum.
-// Modules not listed here fall back to a generic "Session N" placeholder until their syllabus is added.
 // Real syllabus content — session-by-session breakdown, keyed by module id.
-// TODO: populate once JD Institute of Fashion Technology provides the official
-// course syllabus. Left empty for now; modules without an entry here already
-// fall back to generic "Session N" placeholders (see getSyllabusForModule below).
-const SYLLABUS_CATALOGUE = {
-};
+// For now every course has just ONE session: "Introduction". Real session-by-session
+// content gets added here per course as it's provided — each entry's `sessions` array
+// just grows (Session 2, 3, ...). Auto-derived from MODULE_CATALOGUE so every program
+// automatically gets its placeholder entry.
+const SYLLABUS_CATALOGUE = Object.fromEntries(
+  MODULE_CATALOGUE.map(m => [m.id, { sessions: [{ num: 1, title: 'Introduction', topics: '' }] }])
+);
 
 
 // Helper: get session list for a module — real syllabus if available, else generic placeholders
@@ -1317,23 +1350,23 @@ function populateDropdowns() {
     });
     sel.value=cur;
   });
-  // Course dropdowns: built from PROGRAM_CATALOGUE, grouped by stream (Fashion / Interiors).
-  // ns-course/ed-course need the "select a course" placeholder + onchange wiring to the
-  // module picker + validity date calc; the two filter dropdowns need an "All Courses" option.
-  const courseGroupsHtml = Object.entries(PROGRAM_CATALOGUE).map(([stream, programs]) =>
-    `<optgroup label="${stream}">` +
-    programs.map(p => `<option value="${p.name}">${p.name} (${p.durationMonths % 12 === 0 ? (p.durationMonths/12)+' Yr'+(p.durationMonths/12>1?'s':'') : p.durationMonths+' Months'})</option>`).join('') +
-    `</optgroup>`
-  ).join('') + '<option value="Others">Others</option>';
-  ['ns-course','ed-course'].forEach(id=>{
+  // Stream + Course: real cascading dropdowns. Stream lists Fashion/Interiors; Course is
+  // populated from PROGRAM_CATALOGUE only once a stream is picked (see handleStreamChange).
+  ['ns-stream','ed-stream'].forEach(id=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">Select Course</option>' + courseGroupsHtml;
+    sel.innerHTML='<option value="">Select Stream</option>' +
+      Object.keys(PROGRAM_CATALOGUE).map(s=>`<option value="${s}">${s}</option>`).join('');
     sel.value=cur;
   });
   ['filterCourse','attCourseFilter'].forEach(id=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
+    const courseGroupsHtml = Object.entries(PROGRAM_CATALOGUE).map(([stream, programs]) =>
+      `<optgroup label="${stream}">` +
+      programs.map(p => `<option value="${p.name}">${p.name} (${formatDuration(p.durationMonths)})</option>`).join('') +
+      `</optgroup>`
+    ).join('') + '<option value="Others">Others</option>';
     sel.innerHTML='<option value="">All Courses</option>' + courseGroupsHtml;
     sel.value=cur;
   });
@@ -2761,7 +2794,8 @@ async function saveNewStudent() {
 
 function resetAddForm() {
   ['ns-name','ns-phone','ns-email','ns-admDate','ns-validityDate'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ns-course').value='';
+  document.getElementById('ns-stream').value='';
+  refreshCourseOptions('ns', '');
   document.getElementById('ns-faculty').value='';
   document.getElementById('ns-slot').value='';
   document.getElementById('genIdDisplay').textContent='—';
@@ -2780,8 +2814,10 @@ async function openStudentModal(docId) {
   document.getElementById('ed-name').value=s.name||'';
   document.getElementById('ed-phone').value=s.phone||'';
   document.getElementById('ed-email').value=s.email||'';
-  document.getElementById('ed-course').value=s.course||'';
   populateDropdowns();
+  const edStreamInfo = findProgramByName(s.course);
+  document.getElementById('ed-stream').value = edStreamInfo ? edStreamInfo.stream : '';
+  refreshCourseOptions('ed', s.course || '');
   document.getElementById('ed-faculty').value=s.faculty||'';
   document.getElementById('ed-slot').value=s.slot||'';
   document.getElementById('ed-status').value=s.status||'active';
