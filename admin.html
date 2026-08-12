@@ -700,7 +700,7 @@
     <!-- CONFIG -->
     <div class="page" id="page-config">
       <div class="page-header"><h1>Slots & Faculty</h1></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px">
+      <div style="display:grid;grid-template-columns:1fr;gap:20px;max-width:400px">
         <div class="card">
           <div class="card-title">Time Slots</div>
           <div id="slotList" style="margin-bottom:14px"></div>
@@ -708,15 +708,7 @@
             <input type="text" id="newSlot" placeholder="e.g. 9AM–12PM" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none"/>
             <button class="btn btn-orange" onclick="addSlot()">Add</button>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Faculty (Quick Labels)</div>
-          <div id="facultyList" style="margin-bottom:14px"></div>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="newFaculty" placeholder="Faculty name" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none"/>
-            <button class="btn btn-orange" onclick="addFaculty()">Add</button>
-          </div>
-          <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">This is the old simple name list. For faculty who need to log in and approve student sessions, use <strong>Faculty Accounts</strong> in the sidebar instead.</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">For faculty, use <strong>Faculty Accounts</strong> in the sidebar — that's the single faculty list used everywhere in the portal.</div>
         </div>
       </div>
     </div>
@@ -833,6 +825,14 @@
                 <option>Others</option>
               </select>
             </div>
+            <div class="f-group"><label>Faculty</label>
+              <select id="ed-faculty"><option value="">Select Faculty</option></select>
+            </div>
+            <div class="f-group"><label>Slot</label>
+              <select id="ed-slot"><option value="">Select Slot</option></select>
+            </div>
+            <div class="f-group"><label>Admission Date</label><input type="date" id="ed-admDate"/></div>
+            <div class="f-group"><label>Course Validity End Date</label><input type="date" id="ed-validityDate"/></div>
             <div class="f-group"><label>App Start Date <span style="color:var(--text3);font-weight:400">(streak/absence tracking begins from here)</span></label><input type="date" id="ed-trackingStartDate"/></div>
             <div class="f-group"><label>Status</label>
               <select id="ed-status">
@@ -945,7 +945,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 const AUTO_LOGOUT_HRS = 3; // same rule as the student app — used to auto-close stale sessions whenever admin loads attendance
-let allStudents = [], allAttendance = [], slots = [], facultyList = [];
+let allStudents = [], allAttendance = [], slots = [];
 let allFaculty = [];
 let editingStudentId = null;
 let ns_selectedDays = new Set();
@@ -997,9 +997,7 @@ window.deleteStudentConfirm = deleteStudentConfirm;
 window.openStudentModal = openStudentModal;
 window.quickStatusChange = quickStatusChange;
 window.addSlot = addSlot;
-window.addFaculty = addFaculty;
 window.removeSlot = removeSlot;
-window.removeFaculty = removeFaculty;
 window.loadLiveSlots = loadLiveSlots;
 window.toggleEdPassword = toggleEdPassword;
 window.quickViewCreds = quickViewCreds;
@@ -1246,9 +1244,7 @@ async function loadConfig() {
   try {
     const sd = await getDoc(doc(db,'cadd_config','slots'));
     slots = sd.exists() ? (sd.data().list || []) : [];
-    const fd = await getDoc(doc(db,'cadd_config','faculty'));
-    facultyList = fd.exists() ? (fd.data().list || []) : [];
-  } catch(e) { slots=[]; facultyList=[]; }
+  } catch(e) { slots=[]; }
   renderConfig();
   populateDropdowns();
 }
@@ -1260,13 +1256,6 @@ function renderConfig() {
     d.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;';
     d.innerHTML=`<span>${s}</span><button class="btn btn-red btn-sm" onclick="removeSlot(${i})">×</button>`;
     sl.appendChild(d);
-  });
-  const fl=document.getElementById('facultyList'); fl.innerHTML='';
-  facultyList.forEach((f,i)=>{
-    const d=document.createElement('div');
-    d.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;';
-    d.innerHTML=`<span>${f}</span><button class="btn btn-red btn-sm" onclick="removeFaculty(${i})">×</button>`;
-    fl.appendChild(d);
   });
 }
 
@@ -1306,22 +1295,6 @@ async function removeSlot(i) {
   renderConfig(); populateDropdowns();
   showToast('Slot removed','warning');
 }
-async function addFaculty() {
-  const v=document.getElementById('newFaculty').value.trim();
-  if(!v){showToast('Enter a faculty name','error');return;}
-  facultyList.push(v);
-  await setDoc(doc(db,'cadd_config','faculty'),{list:facultyList});
-  document.getElementById('newFaculty').value='';
-  renderConfig(); populateDropdowns();
-  showToast('Faculty added!','success');
-}
-async function removeFaculty(i) {
-  facultyList.splice(i,1);
-  await setDoc(doc(db,'cadd_config','faculty'),{list:facultyList});
-  renderConfig(); populateDropdowns();
-  showToast('Faculty removed','warning');
-}
-
 // ── STUDENTS ──
 async function loadStudents() {
   const snap=await getDocs(collection(db,'cadd_students'));
@@ -2545,7 +2518,7 @@ function renderStudents(list) {
 
 // Populates the Faculty / Slot / Module filter dropdowns on the students page.
 // Faculty filter uses allFaculty (real Faculty Accounts, login-capable) since that's
-// what s.faculty actually stores (a facultyId/docId) — the old facultyList is unused.
+// what s.faculty actually stores (a facultyId/docId).
 function populateStudentFilterOptions() {
   const facSel = document.getElementById('filterFaculty');
   if (facSel) {
