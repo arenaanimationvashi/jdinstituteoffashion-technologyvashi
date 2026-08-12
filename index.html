@@ -793,10 +793,25 @@ const CENTRE_LNG = TEST_MODE ? HOME_LNG : VASHI_LNG;
 const RADIUS_M = TEST_MODE ? HOME_RADIUS : VASHI_RADIUS;
 const AUTO_LOGOUT_HRS = 3;
 
-// Syllabus content — populate once JD Institute of Fashion Technology provides
-// the official course/session curriculum. Left empty for now; the app already
-// falls back to generic "Session N" placeholders when a module has no entry here.
+// Syllabus content — session-by-session breakdown, keyed by module id.
+// For now every course has just ONE session: "Introduction". Kept in manual sync with
+// admin.html/faculty.html — this list of module ids must match admin.html's
+// MODULE_CATALOGUE. Real session-by-session content (Session 2, 3, ...) gets added here
+// per course as it's provided.
 const SYLLABUS_CATALOGUE = {
+  fashion_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_short_dip: { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_biz_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_vm:        { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_styling:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_short_dip: { sessions: [{ num: 1, title: 'Introduction', topics: '' }] }
 };
 
 function getSyllabusSessionInfo(modId, sessionNum) {
