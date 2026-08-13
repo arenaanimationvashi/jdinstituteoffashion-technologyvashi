@@ -734,6 +734,15 @@
   </div>
 </div>
 
+<!-- Admin announcement — mandatory, no skip/close, re-shown every app open while admin keeps it ON -->
+<div class="install-modal-overlay" id="announcementOverlay" style="z-index:2100">
+  <div class="install-modal">
+    <div style="color:var(--danger);font-weight:700;font-size:15px;letter-spacing:0.4px;margin-bottom:12px">⚠️ Notice</div>
+    <p id="announcementText" style="white-space:pre-wrap;color:var(--text-primary)"></p>
+    <button class="btn-primary" onclick="dismissAnnouncement()">OK, I Understand</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="logout-reminder-toast" id="logoutReminderToast"></div>
 
@@ -922,6 +931,7 @@ async function doLogin() {
     if (snap.empty) { showToast('Invalid Student ID or Password', 'error'); btn.disabled=false; btn.textContent='Login →'; return; }
     const d = snap.docs[0];
     currentStudent = { docId: d.id, ...d.data() };
+    checkAndShowAnnouncement();
     if (currentStudent.status === 'deactivated') {
       showToast('Your account has been deactivated. Contact admin.', 'error');
       btn.disabled=false; btn.textContent='Login →'; return;
@@ -955,6 +965,7 @@ async function tryRestoreSession() {
     const docSnap = await getDoc(doc(db,'cadd_students',savedDocId));
     if (docSnap.exists()) {
       currentStudent = { docId: docSnap.id, ...docSnap.data() };
+      checkAndShowAnnouncement();
       if (currentStudent.status === 'deactivated') { sessionStorage.removeItem('cadd_student_docId'); return; }
       const validity = getValidityStatus(currentStudent.validityEndDate);
       if (validity.state === 'expired') {
@@ -974,6 +985,29 @@ async function tryRestoreSession() {
     sessionStorage.removeItem('cadd_student_docId');
   }
 }
+
+// Mandatory admin announcement — checked on every app open (fresh login above, and
+// session-restore above). Deliberately does NOT persist a "seen" flag anywhere: it's
+// meant to reappear every single time the student opens/reloads the app for as long as
+// admin keeps it ON, and stop the moment admin turns it OFF. Fails silently so a broken
+// check never blocks a student from using the app.
+async function checkAndShowAnnouncement() {
+  try {
+    const snap = await getDoc(doc(db,'cadd_config','announcement'));
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (data.enabled && data.message && data.message.trim()) {
+      document.getElementById('announcementText').textContent = data.message;
+      document.getElementById('announcementOverlay').classList.add('show');
+    }
+  } catch(e) {
+    console.warn('Announcement check failed:', e);
+  }
+}
+function dismissAnnouncement() {
+  document.getElementById('announcementOverlay').classList.remove('show');
+}
+window.dismissAnnouncement = dismissAnnouncement;
 
 async function loadDashboard() {
   const s = currentStudent;
