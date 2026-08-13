@@ -285,6 +285,7 @@
     <div class="nav-item" data-page="attendance" onclick="showPage('attendance')"><span class="icon">📋</span> Attendance Log</div>
     <div class="nav-section">Settings</div>
     <div class="nav-item" data-page="config" onclick="showPage('config')"><span class="icon">⚙️</span> Slots & Faculty</div>
+    <div class="nav-item" data-page="announcement" onclick="showPage('announcement')"><span class="icon">📢</span> Announcement</div>
   </div>
 
   <div class="content">
@@ -710,6 +711,35 @@
             <button class="btn btn-orange" onclick="addSlot()">Add</button>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">For faculty, use <strong>Faculty Accounts</strong> in the sidebar — that's the single faculty list used everywhere in the portal.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANNOUNCEMENT -->
+    <div class="page" id="page-announcement">
+      <div class="page-header"><h1>Announcement</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+        <div class="card">
+          <div class="card-title">Student Notice</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+            <button id="announceToggleBtn" class="btn btn-red" onclick="toggleAnnouncement()">OFF</button>
+            <span style="font-size:11px;color:var(--text3);line-height:1.4">Toggling saves instantly — no separate save step needed for this.</span>
+          </div>
+          <div class="f-group">
+            <label>Message</label>
+            <textarea id="announceMessage" rows="6" placeholder="e.g. Institute closed 15th August, regular classes resume next working day" style="resize:vertical"></textarea>
+          </div>
+          <button class="btn btn-orange" style="margin-top:12px" onclick="saveAnnouncementMessage()">Save Message</button>
+          <div style="font-size:11px;color:var(--text3);margin-top:12px" id="announceUpdatedAt">Last updated: —</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Live Preview — exactly what students see</div>
+          <div style="background:var(--darker);border:1px solid var(--border);border-radius:12px;padding:28px 22px;text-align:center">
+            <div style="color:var(--red);font-weight:700;font-size:15px;letter-spacing:0.4px;margin-bottom:12px">⚠️ Notice</div>
+            <p id="announcePreviewText" style="white-space:pre-wrap;color:#fff;font-size:13px;line-height:1.6;margin:0 0 20px">Nothing written yet.</p>
+            <button class="btn btn-orange" style="width:100%" disabled>OK, I Understand</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:12px;line-height:1.5">This only shows to students while the toggle above is ON — it reappears every time they open or reload the app until you turn it OFF.</div>
         </div>
       </div>
     </div>
@@ -1387,6 +1417,73 @@ async function removeSlot(i) {
   renderConfig(); populateDropdowns();
   showToast('Slot removed','warning');
 }
+
+// ── ANNOUNCEMENT ──
+// Single doc cadd_config/announcement: { enabled, message, updatedAt }. Firestore rules
+// carve out public read on just this doc so the student app can check it without being
+// signed in via Firebase Auth (student app uses its own app-level login, not Firebase Auth).
+let announcementState = { enabled: false, message: '' };
+async function loadAnnouncement() {
+  try {
+    const snap = await getDoc(doc(db,'cadd_config','announcement'));
+    const data = snap.exists() ? snap.data() : { enabled: false, message: '' };
+    announcementState.enabled = !!data.enabled;
+    announcementState.message = data.message || '';
+    document.getElementById('announceMessage').value = announcementState.message;
+    renderAnnounceToggleBtn();
+    updateAnnouncePreview();
+    document.getElementById('announceUpdatedAt').textContent = data.updatedAt
+      ? 'Last updated: ' + new Date(data.updatedAt.seconds*1000).toLocaleString()
+      : 'Last updated: —';
+  } catch(e) {
+    showToast('Error loading announcement: '+e.message,'error');
+  }
+}
+function renderAnnounceToggleBtn() {
+  const btn = document.getElementById('announceToggleBtn');
+  btn.textContent = announcementState.enabled ? 'ON' : 'OFF';
+  btn.className = 'btn ' + (announcementState.enabled ? 'btn-green' : 'btn-red');
+}
+function updateAnnouncePreview() {
+  const msg = document.getElementById('announceMessage').value.trim();
+  document.getElementById('announcePreviewText').textContent = msg || 'Nothing written yet.';
+}
+document.getElementById('announceMessage')?.addEventListener('input', updateAnnouncePreview);
+async function toggleAnnouncement() {
+  // Saves immediately on click — no separate save step for the toggle itself.
+  announcementState.enabled = !announcementState.enabled;
+  renderAnnounceToggleBtn();
+  try {
+    await setDoc(doc(db,'cadd_config','announcement'), {
+      enabled: announcementState.enabled,
+      message: announcementState.message,
+      updatedAt: Timestamp.now()
+    }, { merge: true });
+    showToast(announcementState.enabled ? 'Announcement turned ON — students will see it now' : 'Announcement turned OFF','success');
+    loadAnnouncement();
+  } catch(e) {
+    announcementState.enabled = !announcementState.enabled; // revert the button on failure
+    renderAnnounceToggleBtn();
+    showToast('Error: '+e.message,'error');
+  }
+}
+window.toggleAnnouncement = toggleAnnouncement;
+async function saveAnnouncementMessage() {
+  const msg = document.getElementById('announceMessage').value;
+  announcementState.message = msg;
+  try {
+    await setDoc(doc(db,'cadd_config','announcement'), {
+      enabled: announcementState.enabled,
+      message: msg,
+      updatedAt: Timestamp.now()
+    }, { merge: true });
+    showToast('Announcement message saved!','success');
+    loadAnnouncement();
+  } catch(e) {
+    showToast('Error: '+e.message,'error');
+  }
+}
+window.saveAnnouncementMessage = saveAnnouncementMessage;
 // ── STUDENTS ──
 async function loadStudents() {
   const snap=await getDocs(collection(db,'cadd_students'));
@@ -3862,6 +3959,7 @@ function showPage(id) {
   if(id==='feedback') loadFeedback();
   if(id==='leaveRequests') loadLeaveRequests();
   if(id==='facultyLeave') { populateAdminFacultyLeaveDropdown(); loadFacultyLeavePage(); }
+  if(id==='announcement') loadAnnouncement();
 }
 
 function switchTab(tab) {
