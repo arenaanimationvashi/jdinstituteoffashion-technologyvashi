@@ -221,7 +221,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <!-- TODO: replace with JD Institute's EmailJS Public Key -->
-  <script>emailjs.init('STmW3J-XqtSz4m50J');</script>
+  <script>emailjs.init('ZZnMwRWDejsC3uy0h');</script>
   <link rel="manifest" href="admin-manifest.json"/>
   <meta name="theme-color" content="#2E3542"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -3144,10 +3144,10 @@ async function hashPassword(plain) {
 }
 
 // ── EMAILJS CONFIG ──
-// TODO: replace with JD Institute's own EmailJS service/template IDs
-const EMAILJS_SERVICE = 'service_ilg156j';
-const EMAILJS_WELCOME_TEMPLATE = 'template_63ffk7o';
-const EMAILJS_ABSENCE_TEMPLATE = 'template_6mtftdd';
+// Fully switched to JD Institute's own EmailJS account/service/templates.
+const EMAILJS_SERVICE = 'service_hx2yzdp';
+const EMAILJS_WELCOME_TEMPLATE = 'template_nhx74dd';
+const EMAILJS_ABSENCE_TEMPLATE = 'template_6xjgvvq';
 
 async function sendWelcomeEmail(docId, studentData) {
   const s = studentData || allStudents.find(x=>x.docId===docId);
