@@ -265,6 +265,34 @@
     .syl-bar-track { height:6px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; margin-bottom:16px; }
     .syl-bar-fill { height:100%; background:var(--cadd-orange); border-radius:4px; transition:width 0.3s; }
 
+    /* Semester tabs — S1, S2... one per semester, locked ones disabled/dimmed */
+    .syl-sem-tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; margin-bottom:12px; scrollbar-width:none; }
+    .syl-sem-tabs::-webkit-scrollbar { display:none; }
+    .syl-sem-tab {
+      flex:0 0 auto; background:rgba(255,255,255,0.05); border:1px solid var(--cadd-border);
+      color:var(--text-secondary); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+    }
+    .syl-sem-tab.active { background:var(--cadd-orange); border-color:var(--cadd-orange); color:#fff; }
+    .syl-sem-tab.done:not(.active) { border-color:rgba(76,175,130,0.5); color:var(--success); }
+    .syl-sem-tab.locked { opacity:0.4; cursor:not-allowed; }
+
+    /* Topic carousel — swipeable, one topic card at a time, within the active semester */
+    .syl-topic-carousel {
+      display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch; padding-bottom:4px; scrollbar-width:none;
+    }
+    .syl-topic-carousel::-webkit-scrollbar { display:none; }
+    .syl-topic-card {
+      flex:0 0 100%; scroll-snap-align:center;
+      background:rgba(244,121,32,0.08); border:1px solid rgba(244,121,32,0.25);
+      border-radius:10px; padding:16px; box-sizing:border-box;
+    }
+    .syl-topic-index { font-size:10px; font-weight:700; color:var(--cadd-orange); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:6px; }
+    .syl-carousel-dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+    .syl-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.2); transition:background 0.2s; }
+    .syl-dot.active { background:var(--cadd-orange); }
+
     .syl-current-session {
       background:rgba(244,121,32,0.08); border:1px solid rgba(244,121,32,0.25);
       border-radius:10px; padding:16px;
@@ -921,6 +949,42 @@ function isSemesterUnlocked(syllabusSessions, studentSessions, semesterNum) {
   return prevSessions.every(s => studentSessions[s.num] && studentSessions[s.num].approved);
 }
 
+// Which semester tab is active for a given module. Remembers the student's manual tab
+// pick (window.__activeSemester) as long as it's still unlocked; otherwise defaults to the
+// first semester that isn't fully approved yet (i.e. "where you currently are"), or the
+// last semester if everything is already done.
+window.__activeSemester = window.__activeSemester || {};
+function getActiveSemesterNum(modId, syllabusSessions, studentSessions) {
+  const semNums = [...new Set(syllabusSessions.map(s => s.semester))].sort((a,b) => a-b);
+  if (!semNums.length) return null;
+  const chosen = window.__activeSemester[modId];
+  if (chosen != null && semNums.includes(chosen) && isSemesterUnlocked(syllabusSessions, studentSessions, chosen)) {
+    return chosen;
+  }
+  for (const sem of semNums) {
+    const semSessions = syllabusSessions.filter(s => s.semester === sem);
+    const allApproved = semSessions.every(s => studentSessions[s.num] && studentSessions[s.num].approved);
+    if (!allApproved) return sem;
+  }
+  return semNums[semNums.length - 1];
+}
+function setActiveSemester(modId, sem) {
+  window.__activeSemester[modId] = sem;
+  renderSyllabusSection(currentStudent.modules);
+}
+window.setActiveSemester = setActiveSemester;
+
+// Highlights the nearest dot as the topic carousel is swiped/scrolled.
+function updateCarouselDots(modId) {
+  const carousel = document.getElementById('sylCarousel-' + modId);
+  const dotsWrap = document.getElementById('sylDots-' + modId);
+  if (!carousel || !dotsWrap || !carousel.firstElementChild) return;
+  const cardWidth = carousel.firstElementChild.getBoundingClientRect().width + 12; // 12px gap
+  const idx = Math.round(carousel.scrollLeft / cardWidth);
+  [...dotsWrap.children].forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+window.updateCarouselDots = updateCarouselDots;
+
 let currentStudentDocId = null; // used by syllabus tick handler
 
 let currentStudent = null;
@@ -1526,46 +1590,100 @@ function renderSyllabusSection(modules) {
     const approvedCount = Object.values(sessions).filter(x => x.approved).length;
     const pct = totalSessions ? Math.round((approvedCount / totalSessions) * 100) : 0;
 
-    // Find current session: first one that is NOT approved
-    let currentNum = null;
-    for (let n = 1; n <= totalSessions; n++) {
-      if (!sessions[n] || !sessions[n].approved) { currentNum = n; break; }
-    }
+    const syllabusSessions = SYLLABUS_CATALOGUE[modId] ? SYLLABUS_CATALOGUE[modId].sessions : [];
+    const hasSemesters = syllabusSessions.some(s => s.semester);
 
     const card = document.createElement('div');
     card.className = 'syllabus-module-card';
 
     let bodyHtml = '';
-    if (currentNum === null) {
-      // All sessions approved — module complete
-      bodyHtml = `<div class="syl-completed-note">🎉 Module complete! All ${totalSessions} sessions approved.</div>`;
-    } else {
-      const sess = sessions[currentNum] || {};
-      const info = getSyllabusSessionInfo(modId, currentNum);
-      if (sess.approved) {
-        // shouldn't happen given currentNum logic, but safe fallback
-        bodyHtml = `<div class="syl-completed-note">Session ${currentNum} approved.</div>`;
-      } else if (sess.studentTicked) {
-        bodyHtml = `
-          <div class="syl-current-session">
-            <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
-            <div class="syl-session-title">${info.title}</div>
-            ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
-            <div class="syl-pending-note">⏳ Marked complete — waiting for faculty approval</div>
-          </div>
-        `;
+
+    if (hasSemesters) {
+      // ── Semester-tab + swipeable-topic-carousel mode ──
+      // Every topic within the active (unlocked) semester is freely selectable/completable
+      // in any order — no forced sequence. A semester unlocks once every topic in the
+      // previous semester is approved (isSemesterUnlocked, shared with admin.html's logic).
+      const semNums = [...new Set(syllabusSessions.map(s => s.semester))].sort((a,b) => a-b);
+      const activeSem = getActiveSemesterNum(modId, syllabusSessions, sessions);
+
+      const tabsHtml = semNums.map(sem => {
+        const unlocked = isSemesterUnlocked(syllabusSessions, sessions, sem);
+        const semSessions = syllabusSessions.filter(s => s.semester === sem);
+        const semDone = semSessions.every(s => sessions[s.num] && sessions[s.num].approved);
+        const cls = 'syl-sem-tab' + (sem === activeSem ? ' active' : '') + (!unlocked ? ' locked' : '') + (semDone ? ' done' : '');
+        return `<button class="${cls}" ${!unlocked ? 'disabled' : ''} onclick="setActiveSemester('${modId}', ${sem})">${semDone ? '✅ ' : (!unlocked ? '🔒 ' : '')}S${sem}</button>`;
+      }).join('');
+
+      const activeSemSessions = syllabusSessions.filter(s => s.semester === activeSem);
+      const activeUnlocked = isSemesterUnlocked(syllabusSessions, sessions, activeSem);
+
+      let carouselHtml;
+      if (!activeUnlocked) {
+        carouselHtml = `<div class="syl-locked-note">🔒 Complete every topic in the previous semester to unlock ${activeSemSessions[0] ? activeSemSessions[0].semesterName : 'this semester'}.</div>`;
       } else {
-        const practicedToday = sess.lastPracticedAt && new Date(sess.lastPracticedAt.seconds*1000).toDateString() === new Date().toDateString();
-        bodyHtml = `
-          <div class="syl-current-session">
-            <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
+        const cards = activeSemSessions.map((info, idx) => {
+          const sess = sessions[info.num] || {};
+          const practicedToday = sess.lastPracticedAt && new Date(sess.lastPracticedAt.seconds*1000).toDateString() === new Date().toDateString();
+          let stateHtml;
+          if (sess.approved) {
+            stateHtml = `<div class="syl-completed-note">✅ Approved</div>`;
+          } else if (sess.studentTicked) {
+            stateHtml = `<div class="syl-pending-note">⏳ Marked complete — waiting for faculty approval</div>`;
+          } else {
+            stateHtml = `
+              <button class="syl-tick-btn" onclick="tickSessionComplete('${modId}', ${info.num})">✅ Mark this topic complete</button>
+              <button class="syl-practice-btn" onclick="logPracticeSession('${modId}', ${info.num})" ${practicedToday ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📝 ${practicedToday ? "Practice logged for today ✓" : "I practiced this (not a full session)"}</button>
+              ${sess.practiceCount ? `<div class="syl-practice-count">Practiced ${sess.practiceCount}x so far${sess.lastPracticedAt ? ' · last on ' + new Date(sess.lastPracticedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}${practicedToday ? ' · come back tomorrow for another' : ''}</div>` : ''}
+            `;
+          }
+          return `<div class="syl-topic-card">
+            <div class="syl-topic-index">Topic ${idx+1} of ${activeSemSessions.length} · ${info.semesterName}</div>
             <div class="syl-session-title">${info.title}</div>
             ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
-            <button class="syl-tick-btn" onclick="tickSessionComplete('${modId}', ${currentNum})">✅ Mark this session complete</button>
-            <button class="syl-practice-btn" onclick="logPracticeSession('${modId}', ${currentNum})" ${practicedToday ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📝 ${practicedToday ? "Practice logged for today ✓" : "I practiced this (not a full session)"}</button>
-            ${sess.practiceCount ? `<div class="syl-practice-count">Practiced ${sess.practiceCount}x so far${sess.lastPracticedAt ? ' · last on ' + new Date(sess.lastPracticedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}${practicedToday ? ' · come back tomorrow for another' : ''}</div>` : ''}
-          </div>
+            ${stateHtml}
+          </div>`;
+        }).join('');
+        const dots = activeSemSessions.map((_, i) => `<span class="syl-dot${i===0?' active':''}"></span>`).join('');
+        carouselHtml = `
+          <div class="syl-topic-carousel" id="sylCarousel-${modId}" onscroll="updateCarouselDots('${modId}')">${cards}</div>
+          <div class="syl-carousel-dots" id="sylDots-${modId}">${dots}</div>
         `;
+      }
+      bodyHtml = `<div class="syl-sem-tabs">${tabsHtml}</div>${carouselHtml}`;
+    } else {
+      // ── Fallback: old strict-linear one-session-at-a-time view, for programs whose real
+      // semester syllabus hasn't been injected yet (still a single flat "Introduction"). ──
+      let currentNum = null;
+      for (let n = 1; n <= totalSessions; n++) {
+        if (!sessions[n] || !sessions[n].approved) { currentNum = n; break; }
+      }
+      if (currentNum === null) {
+        bodyHtml = `<div class="syl-completed-note">🎉 Module complete! All ${totalSessions} sessions approved.</div>`;
+      } else {
+        const sess = sessions[currentNum] || {};
+        const info = getSyllabusSessionInfo(modId, currentNum);
+        if (sess.studentTicked) {
+          bodyHtml = `
+            <div class="syl-current-session">
+              <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
+              <div class="syl-session-title">${info.title}</div>
+              ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
+              <div class="syl-pending-note">⏳ Marked complete — waiting for faculty approval</div>
+            </div>
+          `;
+        } else {
+          const practicedToday = sess.lastPracticedAt && new Date(sess.lastPracticedAt.seconds*1000).toDateString() === new Date().toDateString();
+          bodyHtml = `
+            <div class="syl-current-session">
+              <div class="syl-session-label">Session ${currentNum} of ${totalSessions}</div>
+              <div class="syl-session-title">${info.title}</div>
+              ${info.topics ? `<div class="syl-session-topics">${info.topics}</div>` : ''}
+              <button class="syl-tick-btn" onclick="tickSessionComplete('${modId}', ${currentNum})">✅ Mark this session complete</button>
+              <button class="syl-practice-btn" onclick="logPracticeSession('${modId}', ${currentNum})" ${practicedToday ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📝 ${practicedToday ? "Practice logged for today ✓" : "I practiced this (not a full session)"}</button>
+              ${sess.practiceCount ? `<div class="syl-practice-count">Practiced ${sess.practiceCount}x so far${sess.lastPracticedAt ? ' · last on ' + new Date(sess.lastPracticedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}${practicedToday ? ' · come back tomorrow for another' : ''}</div>` : ''}
+            </div>
+          `;
+        }
       }
     }
 
