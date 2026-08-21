@@ -802,13 +802,89 @@ const CENTRE_LNG = TEST_MODE ? HOME_LNG : VASHI_LNG;
 const RADIUS_M = TEST_MODE ? HOME_RADIUS : VASHI_RADIUS;
 const AUTO_LOGOUT_HRS = 3;
 
-// Syllabus content — session-by-session breakdown, keyed by module id.
-// For now every course has just ONE session: "Introduction". Kept in manual sync with
-// admin.html/faculty.html — this list of module ids must match admin.html's
-// MODULE_CATALOGUE. Real session-by-session content (Session 2, 3, ...) gets added here
-// per course as it's provided.
+// Syllabus content — semester-by-semester, topic-by-topic breakdown, keyed by module id.
+// Kept in manual sync with admin.html/faculty.html — module ids and session `num`s must
+// match admin.html's MODULE_CATALOGUE/SYLLABUS_CATALOGUE exactly. Each session now also
+// carries `semester`/`semesterName` (used to group sessions and gate which semester is
+// currently unlocked — see isSemesterUnlocked below). Programs without real content yet
+// (M.Sc in Fashion, M.Des in Fashion) fall back to a single "Introduction" placeholder
+// per semester, same as admin.html's buildDefaultSyllabus().
 const SYLLABUS_CATALOGUE = {
-  fashion_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_bdes: { sessions: [
+    // Semester I
+    { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Foundation Art', topics: 'Learn the basics of drawing, shading, composition, and color theory—crucial for building visual sensibility and creative expression.' },
+    { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Technical Drawing', topics: 'Develop precise, scaled technical sketches of garments to communicate design and construction details clearly.' },
+    { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration – I', topics: 'Introduction to sketching fashion figures and garment designs for women\u2019s wear with emphasis on proportion and styling.' },
+    { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: 'Understand the fundamentals of fashion as an industry, its evolution, consumer behavior, and the meaning behind fashion choices.' },
+    { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Textiles', topics: 'Study fabric types, fiber properties, weaves, and finishes to understand how fabric choice impacts design and functionality.' },
+    { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Fashion History – I', topics: 'Explore ancient and medieval costume history to understand the origin of design influences.' },
+    { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Computer Applications (MS Office + Canva)', topics: 'Gain digital literacy for documentation, presentations, and basic design tools to organize and present your ideas effectively.' },
+    { num: 8,  semester: 1, semesterName: 'Semester I', title: 'Pattern Making – I (Basics)', topics: 'Learn the principles of pattern drafting using body measurements to create basic garment patterns.' },
+    { num: 9,  semester: 1, semesterName: 'Semester I', title: 'Basics of Sewing (60 Samples)', topics: 'Practice stitching over 60 sample techniques to master construction fundamentals like seams, darts, plackets, etc.' },
+    { num: 10, semester: 1, semesterName: 'Semester I', title: 'Communication and Soft Skills', topics: 'Improve interpersonal communication, presentation skills, and confidence essential for personal and professional success.' },
+    // Semester II
+    { num: 11, semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration – II', topics: 'Advance to more dynamic poses, stylization, fabric rendering, and fashion croquis development.' },
+    { num: 12, semester: 2, semesterName: 'Semester II', title: 'Fabric Studies – I', topics: 'Deeper study of fabric properties, finishes, identification techniques, and textile testing.' },
+    { num: 13, semester: 2, semesterName: 'Semester II', title: 'Fashion History – II', topics: 'Continue learning through Renaissance and Victorian fashion history and its influence on contemporary trends.' },
+    { num: 14, semester: 2, semesterName: 'Semester II', title: 'Computer-Aided Design I (Adobe Illustrator)', topics: 'Use Adobe Illustrator for flat sketches, digital croquis, and print development.' },
+    { num: 15, semester: 2, semesterName: 'Semester II', title: 'Pattern Making – II', topics: 'Learn more complex patterns and adapt them to fit different body types and design styles.' },
+    { num: 16, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology I (8 Garments)', topics: 'Apply your pattern and sewing skills to create complete garments, learning about cutting, assembling, and finishing.' },
+    { num: 17, semester: 2, semesterName: 'Semester II', title: 'Draping – I', topics: 'Introduction to fabric draping directly on a dress form to understand 3D garment construction techniques.' },
+    { num: 18, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Prepare your first official showcase as part of JD\u2019s internal fashion event to demonstrate your semester learnings.' },
+    // Semester III
+    { num: 19, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration III (Male)', topics: 'Learn to draw male croquis and garments with appropriate anatomy, styling, and textures.' },
+    { num: 20, semester: 3, semesterName: 'Semester III', title: 'Fabric Studies II', topics: 'Explore specialty fabrics, blends, and high-performance textiles with an emphasis on usage and suitability.' },
+    { num: 21, semester: 3, semesterName: 'Semester III', title: 'Fashion History III', topics: 'Explore 20th-century fashion evolution and major fashion revolutions through the decades.' },
+    { num: 22, semester: 3, semesterName: 'Semester III', title: 'Traditional Indian Textiles & Motif Development', topics: 'Study Indian textile crafts like Bandhani, Ikat, and Kalamkari while learning to create motifs inspired by traditional art.' },
+    { num: 23, semester: 3, semesterName: 'Semester III', title: 'World Art Appreciation', topics: 'Understand global art movements and their influence on fashion and aesthetic sensibilities.' },
+    { num: 24, semester: 3, semesterName: 'Semester III', title: 'Computer-Aided Design II (Photoshop & InDesign)', topics: 'Advance your digital skills with Adobe Photoshop for image manipulation and InDesign for layout compositions.' },
+    { num: 25, semester: 3, semesterName: 'Semester III', title: 'Pattern Making III (Men\u2019s Wear)', topics: 'Draft and construct patterns specific to men\'s apparel including shirts, trousers, and jackets.' },
+    { num: 26, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology II (8 Garments)', topics: 'Build a new set of garments with advanced sewing, quality control, and finishing techniques.' },
+    { num: 27, semester: 3, semesterName: 'Semester III', title: 'Draping II', topics: 'Explore more complex draping styles for different fabric types and structured silhouettes.' },
+    // Semester IV
+    { num: 28, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration IV (Kids)', topics: 'Focus on proportions and design techniques for children\'s clothing and fashion graphics.' },
+    { num: 29, semester: 4, semesterName: 'Semester IV', title: 'Fashion History IV', topics: 'Learn contemporary fashion history from 1950s to modern-day designers, fashion movements, and innovations.' },
+    { num: 30, semester: 4, semesterName: 'Semester IV', title: 'Computer-Aided Design III (Basics of CLO 3D)', topics: 'Introduction to 3D garment visualization and virtual sampling using CLO 3D software.' },
+    { num: 31, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making IV (Female & Kids)', topics: 'Advanced construction techniques for women\u2019s and kidswear, including styling variations and fit analysis.' },
+    { num: 32, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing Technology III (9 Garments)', topics: 'Final year production-level garments integrating all previous technical knowledge.' },
+    { num: 33, semester: 4, semesterName: 'Semester IV', title: 'Accessory Design', topics: 'Learn to conceptualize and create accessories like bags, belts, and fashion jewelry to complement garments.' },
+    { num: 34, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Showcase your creative outcomes in a competitive setting judged by industry professionals.' },
+    // Semester V
+    { num: 35, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: 'Design a cohesive mini collection or fashion line using market research, trend forecasting, and conceptual thinking.' },
+    { num: 36, semester: 5, semesterName: 'Semester V', title: 'CAD IV (Advanced CLO 3D)', topics: 'Deepen your CLO 3D skills to simulate and test garments virtually before physical production.' },
+    { num: 37, semester: 5, semesterName: 'Semester V', title: 'Pattern Making (Knitwear)', topics: 'Focus on patterns specifically for stretch fabrics like knits used in casual and sportswear.' },
+    { num: 38, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing (7 Garments)', topics: 'Translate knit patterns into finished garments with industrial finishing and quality control techniques.' },
+    { num: 39, semester: 5, semesterName: 'Semester V', title: 'Draping (Woven & Knit Fabrics)', topics: 'Learn the challenges and differences in draping structured woven fabrics versus flexible knits.' },
+    { num: 40, semester: 5, semesterName: 'Semester V', title: 'Fashion Branding & E-Commerce', topics: 'Learn the essentials of building a fashion brand, its digital presence, and how to sell online.' },
+    { num: 41, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting', topics: 'Study consumer behavior, historical cycles, and global influences to predict future fashion trends.' },
+    { num: 42, semester: 5, semesterName: 'Semester V', title: 'Craft Documentation (Project)', topics: 'Undertake a research-based project documenting traditional craft practices, artisanship, and sustainability.' },
+    { num: 43, semester: 5, semesterName: 'Semester V', title: 'Industrial Internship', topics: 'Apply classroom knowledge in a real industry setting, gaining hands-on experience and professional networking.' },
+    // Semester VI
+    { num: 44, semester: 6, semesterName: 'Semester VI', title: 'Portfolio Development', topics: 'Create a professional portfolio showcasing your designs, technical work, illustrations, and projects—crucial for job placements and higher studies.' },
+    { num: 45, semester: 6, semesterName: 'Semester VI', title: 'Fashion Merchandising & Marketing', topics: 'Learn how to present, promote, and sell your designs through strategic planning and market awareness.' },
+    { num: 46, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: 'Understand international fashion business, export processes, and global consumer trends.' },
+    { num: 47, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: 'Develop business acumen through modules in finance, production planning, costing, and retail management.' },
+    { num: 48, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: 'Study quality assurance standards, testing methods, and how to maintain consistency in garment production.' },
+    { num: 49, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Culmination of your three-year journey—present your final collection or capstone project at a professional-level fashion show.' },
+    // Semester VII
+    { num: 50, semester: 7, semesterName: 'Semester VII', title: 'Technical Textiles', topics: 'Explore functional fabrics used in sportswear, medical, military, and industrial applications.' },
+    { num: 51, semester: 7, semesterName: 'Semester VII', title: 'Research Methodology', topics: 'Learn how to conduct academic and industry-related fashion research and data analysis.' },
+    { num: 52, semester: 7, semesterName: 'Semester VII', title: 'Intellectual Property Rights', topics: 'Understand copyrights, trademarks, and patents in fashion to protect your designs.' },
+    { num: 53, semester: 7, semesterName: 'Semester VII', title: 'Fashion Styling', topics: 'Learn how to style for editorials, runway, clients, and personal branding.' },
+    { num: 54, semester: 7, semesterName: 'Semester VII', title: 'Electives I – Surface Ornamentation', topics: 'Techniques like embroidery, appliqu\u00e9, and embellishments for fabric decoration.' },
+    { num: 55, semester: 7, semesterName: 'Semester VII', title: 'Electives II – Sustainable Fashion', topics: 'Eco-conscious design, ethical fashion practices, and circular fashion principles.' },
+    { num: 56, semester: 7, semesterName: 'Semester VII', title: 'Electives III – Creative Pattern Making & Garment Construction', topics: 'Experimental cuts, innovative patterns, and avant-garde construction.' },
+    { num: 57, semester: 7, semesterName: 'Semester VII', title: 'Electives IV – Advanced Draping', topics: 'Complex silhouettes and couture draping techniques on live and dress forms.' },
+    // Semester VIII
+    { num: 58, semester: 8, semesterName: 'Semester VIII', title: 'Review Paper Writing', topics: 'Academic writing focused on fashion topics and review of industry practices.' },
+    { num: 59, semester: 8, semesterName: 'Semester VIII', title: 'Visual Merchandising', topics: 'Learn to create engaging retail displays and in-store experiences.' },
+    { num: 60, semester: 8, semesterName: 'Semester VIII', title: 'Fashion Journalism', topics: 'Report and write for fashion magazines, blogs, or columns with a critical lens.' },
+    { num: 61, semester: 8, semesterName: 'Semester VIII', title: 'Fashion Photography', topics: 'Learn fashion-specific photography, lighting, styling, and post-production.' },
+    { num: 62, semester: 8, semesterName: 'Semester VIII', title: 'Supply Chain Management', topics: 'Study the logistics of raw materials to final product delivery in fashion.' },
+    { num: 63, semester: 8, semesterName: 'Semester VIII', title: 'Digital Marketing & AI for Fashion Design', topics: 'Leverage AI tools, data analysis, and digital marketing to innovate design and reach.' },
+    { num: 64, semester: 8, semesterName: 'Semester VIII', title: 'Elective-Based Industrial Internship', topics: 'Choose an area of specialization to intern in, based on career goals.' },
+    { num: 65, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'Culmination of your journey through a final collection presented to industry experts.' }
+  ] },
   fashion_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
@@ -816,6 +892,10 @@ const SYLLABUS_CATALOGUE = {
   fashion_biz_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_vm:        { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_styling:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  // NOTE: real syllabus not yet provided — placeholders below use 4 semesters (24 months
+  // assumed), matching admin.html's PROGRAM_CATALOGUE entry. Adjust if actual length differs.
+  fashion_msc:  { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
+  fashion_mdes: { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
   interior_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
@@ -829,6 +909,16 @@ function getSyllabusSessionInfo(modId, sessionNum) {
     if (found) return found;
   }
   return { num: sessionNum, title: `Session ${sessionNum}`, topics: '' };
+}
+
+// Is `semesterNum` unlocked for this student's module? Semester 1 is always unlocked; any
+// later semester unlocks once every session in the PRECEDING semester is approved. Mirrors
+// admin.html's isSemesterUnlocked() — kept in manual sync.
+function isSemesterUnlocked(syllabusSessions, studentSessions, semesterNum) {
+  if (semesterNum <= 1) return true;
+  const prevSessions = syllabusSessions.filter(s => s.semester === semesterNum - 1);
+  if (!prevSessions.length) return true;
+  return prevSessions.every(s => studentSessions[s.num] && studentSessions[s.num].approved);
 }
 
 let currentStudentDocId = null; // used by syllabus tick handler
