@@ -605,7 +605,7 @@ function renderPendingApprovals() {
       <div class="avatar">${item.student.name.charAt(0).toUpperCase()}</div>
       <div class="approval-info">
         <div class="a-name">${item.student.name}</div>
-        <div class="a-meta">${item.mod.name} · ${item.student.studentId}</div>
+        <div class="a-meta">${item.mod.name}${sessionInfo.semesterName ? ' · ' + sessionInfo.semesterName : ''} · ${item.student.studentId}</div>
         <div class="a-session">Session ${item.sessionNum}: ${sessionInfo.title} ${daysAgo > 0 ? `· ⏰ ${daysAgo}d ago` : '· today'}</div>
       </div>
       <div class="approval-actions">
@@ -1069,13 +1069,87 @@ async function loadLiveSlots() {
 }
 window.loadLiveSlots = loadLiveSlots;
 
-// Real syllabus content — session-by-session breakdown, keyed by module id.
-// For now every course has just ONE session: "Introduction". Kept in manual sync with
-// admin.html/index.html — this list of module ids must match admin.html's
-// MODULE_CATALOGUE. Real session-by-session content (Session 2, 3, ...) gets added here
-// per course as it's provided.
+// Syllabus content — semester-by-semester, topic-by-topic breakdown, keyed by module id.
+// Kept in manual sync with admin.html/index.html — module ids and session `num`s must
+// match exactly. Each session carries `semester`/`semesterName`, used to group sessions
+// and gate which semester is currently unlocked for a given student (see
+// isSemesterUnlocked below — mirrors the identical helper in admin.html/index.html).
 const SYLLABUS_CATALOGUE = {
-  fashion_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_bdes: { sessions: [
+    // Semester I
+    { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Foundation Art', topics: 'Learn the basics of drawing, shading, composition, and color theory—crucial for building visual sensibility and creative expression.' },
+    { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Technical Drawing', topics: 'Develop precise, scaled technical sketches of garments to communicate design and construction details clearly.' },
+    { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration – I', topics: 'Introduction to sketching fashion figures and garment designs for women\u2019s wear with emphasis on proportion and styling.' },
+    { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: 'Understand the fundamentals of fashion as an industry, its evolution, consumer behavior, and the meaning behind fashion choices.' },
+    { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Textiles', topics: 'Study fabric types, fiber properties, weaves, and finishes to understand how fabric choice impacts design and functionality.' },
+    { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Fashion History – I', topics: 'Explore ancient and medieval costume history to understand the origin of design influences.' },
+    { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Computer Applications (MS Office + Canva)', topics: 'Gain digital literacy for documentation, presentations, and basic design tools to organize and present your ideas effectively.' },
+    { num: 8,  semester: 1, semesterName: 'Semester I', title: 'Pattern Making – I (Basics)', topics: 'Learn the principles of pattern drafting using body measurements to create basic garment patterns.' },
+    { num: 9,  semester: 1, semesterName: 'Semester I', title: 'Basics of Sewing (60 Samples)', topics: 'Practice stitching over 60 sample techniques to master construction fundamentals like seams, darts, plackets, etc.' },
+    { num: 10, semester: 1, semesterName: 'Semester I', title: 'Communication and Soft Skills', topics: 'Improve interpersonal communication, presentation skills, and confidence essential for personal and professional success.' },
+    // Semester II
+    { num: 11, semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration – II', topics: 'Advance to more dynamic poses, stylization, fabric rendering, and fashion croquis development.' },
+    { num: 12, semester: 2, semesterName: 'Semester II', title: 'Fabric Studies – I', topics: 'Deeper study of fabric properties, finishes, identification techniques, and textile testing.' },
+    { num: 13, semester: 2, semesterName: 'Semester II', title: 'Fashion History – II', topics: 'Continue learning through Renaissance and Victorian fashion history and its influence on contemporary trends.' },
+    { num: 14, semester: 2, semesterName: 'Semester II', title: 'Computer-Aided Design I (Adobe Illustrator)', topics: 'Use Adobe Illustrator for flat sketches, digital croquis, and print development.' },
+    { num: 15, semester: 2, semesterName: 'Semester II', title: 'Pattern Making – II', topics: 'Learn more complex patterns and adapt them to fit different body types and design styles.' },
+    { num: 16, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology I (8 Garments)', topics: 'Apply your pattern and sewing skills to create complete garments, learning about cutting, assembling, and finishing.' },
+    { num: 17, semester: 2, semesterName: 'Semester II', title: 'Draping – I', topics: 'Introduction to fabric draping directly on a dress form to understand 3D garment construction techniques.' },
+    { num: 18, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Prepare your first official showcase as part of JD\u2019s internal fashion event to demonstrate your semester learnings.' },
+    // Semester III
+    { num: 19, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration III (Male)', topics: 'Learn to draw male croquis and garments with appropriate anatomy, styling, and textures.' },
+    { num: 20, semester: 3, semesterName: 'Semester III', title: 'Fabric Studies II', topics: 'Explore specialty fabrics, blends, and high-performance textiles with an emphasis on usage and suitability.' },
+    { num: 21, semester: 3, semesterName: 'Semester III', title: 'Fashion History III', topics: 'Explore 20th-century fashion evolution and major fashion revolutions through the decades.' },
+    { num: 22, semester: 3, semesterName: 'Semester III', title: 'Traditional Indian Textiles & Motif Development', topics: 'Study Indian textile crafts like Bandhani, Ikat, and Kalamkari while learning to create motifs inspired by traditional art.' },
+    { num: 23, semester: 3, semesterName: 'Semester III', title: 'World Art Appreciation', topics: 'Understand global art movements and their influence on fashion and aesthetic sensibilities.' },
+    { num: 24, semester: 3, semesterName: 'Semester III', title: 'Computer-Aided Design II (Photoshop & InDesign)', topics: 'Advance your digital skills with Adobe Photoshop for image manipulation and InDesign for layout compositions.' },
+    { num: 25, semester: 3, semesterName: 'Semester III', title: 'Pattern Making III (Men\u2019s Wear)', topics: 'Draft and construct patterns specific to men\'s apparel including shirts, trousers, and jackets.' },
+    { num: 26, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology II (8 Garments)', topics: 'Build a new set of garments with advanced sewing, quality control, and finishing techniques.' },
+    { num: 27, semester: 3, semesterName: 'Semester III', title: 'Draping II', topics: 'Explore more complex draping styles for different fabric types and structured silhouettes.' },
+    // Semester IV
+    { num: 28, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration IV (Kids)', topics: 'Focus on proportions and design techniques for children\'s clothing and fashion graphics.' },
+    { num: 29, semester: 4, semesterName: 'Semester IV', title: 'Fashion History IV', topics: 'Learn contemporary fashion history from 1950s to modern-day designers, fashion movements, and innovations.' },
+    { num: 30, semester: 4, semesterName: 'Semester IV', title: 'Computer-Aided Design III (Basics of CLO 3D)', topics: 'Introduction to 3D garment visualization and virtual sampling using CLO 3D software.' },
+    { num: 31, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making IV (Female & Kids)', topics: 'Advanced construction techniques for women\u2019s and kidswear, including styling variations and fit analysis.' },
+    { num: 32, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing Technology III (9 Garments)', topics: 'Final year production-level garments integrating all previous technical knowledge.' },
+    { num: 33, semester: 4, semesterName: 'Semester IV', title: 'Accessory Design', topics: 'Learn to conceptualize and create accessories like bags, belts, and fashion jewelry to complement garments.' },
+    { num: 34, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Showcase your creative outcomes in a competitive setting judged by industry professionals.' },
+    // Semester V
+    { num: 35, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: 'Design a cohesive mini collection or fashion line using market research, trend forecasting, and conceptual thinking.' },
+    { num: 36, semester: 5, semesterName: 'Semester V', title: 'CAD IV (Advanced CLO 3D)', topics: 'Deepen your CLO 3D skills to simulate and test garments virtually before physical production.' },
+    { num: 37, semester: 5, semesterName: 'Semester V', title: 'Pattern Making (Knitwear)', topics: 'Focus on patterns specifically for stretch fabrics like knits used in casual and sportswear.' },
+    { num: 38, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing (7 Garments)', topics: 'Translate knit patterns into finished garments with industrial finishing and quality control techniques.' },
+    { num: 39, semester: 5, semesterName: 'Semester V', title: 'Draping (Woven & Knit Fabrics)', topics: 'Learn the challenges and differences in draping structured woven fabrics versus flexible knits.' },
+    { num: 40, semester: 5, semesterName: 'Semester V', title: 'Fashion Branding & E-Commerce', topics: 'Learn the essentials of building a fashion brand, its digital presence, and how to sell online.' },
+    { num: 41, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting', topics: 'Study consumer behavior, historical cycles, and global influences to predict future fashion trends.' },
+    { num: 42, semester: 5, semesterName: 'Semester V', title: 'Craft Documentation (Project)', topics: 'Undertake a research-based project documenting traditional craft practices, artisanship, and sustainability.' },
+    { num: 43, semester: 5, semesterName: 'Semester V', title: 'Industrial Internship', topics: 'Apply classroom knowledge in a real industry setting, gaining hands-on experience and professional networking.' },
+    // Semester VI
+    { num: 44, semester: 6, semesterName: 'Semester VI', title: 'Portfolio Development', topics: 'Create a professional portfolio showcasing your designs, technical work, illustrations, and projects—crucial for job placements and higher studies.' },
+    { num: 45, semester: 6, semesterName: 'Semester VI', title: 'Fashion Merchandising & Marketing', topics: 'Learn how to present, promote, and sell your designs through strategic planning and market awareness.' },
+    { num: 46, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: 'Understand international fashion business, export processes, and global consumer trends.' },
+    { num: 47, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: 'Develop business acumen through modules in finance, production planning, costing, and retail management.' },
+    { num: 48, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: 'Study quality assurance standards, testing methods, and how to maintain consistency in garment production.' },
+    { num: 49, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Culmination of your three-year journey—present your final collection or capstone project at a professional-level fashion show.' },
+    // Semester VII
+    { num: 50, semester: 7, semesterName: 'Semester VII', title: 'Technical Textiles', topics: 'Explore functional fabrics used in sportswear, medical, military, and industrial applications.' },
+    { num: 51, semester: 7, semesterName: 'Semester VII', title: 'Research Methodology', topics: 'Learn how to conduct academic and industry-related fashion research and data analysis.' },
+    { num: 52, semester: 7, semesterName: 'Semester VII', title: 'Intellectual Property Rights', topics: 'Understand copyrights, trademarks, and patents in fashion to protect your designs.' },
+    { num: 53, semester: 7, semesterName: 'Semester VII', title: 'Fashion Styling', topics: 'Learn how to style for editorials, runway, clients, and personal branding.' },
+    { num: 54, semester: 7, semesterName: 'Semester VII', title: 'Electives I – Surface Ornamentation', topics: 'Techniques like embroidery, appliqu\u00e9, and embellishments for fabric decoration.' },
+    { num: 55, semester: 7, semesterName: 'Semester VII', title: 'Electives II – Sustainable Fashion', topics: 'Eco-conscious design, ethical fashion practices, and circular fashion principles.' },
+    { num: 56, semester: 7, semesterName: 'Semester VII', title: 'Electives III – Creative Pattern Making & Garment Construction', topics: 'Experimental cuts, innovative patterns, and avant-garde construction.' },
+    { num: 57, semester: 7, semesterName: 'Semester VII', title: 'Electives IV – Advanced Draping', topics: 'Complex silhouettes and couture draping techniques on live and dress forms.' },
+    // Semester VIII
+    { num: 58, semester: 8, semesterName: 'Semester VIII', title: 'Review Paper Writing', topics: 'Academic writing focused on fashion topics and review of industry practices.' },
+    { num: 59, semester: 8, semesterName: 'Semester VIII', title: 'Visual Merchandising', topics: 'Learn to create engaging retail displays and in-store experiences.' },
+    { num: 60, semester: 8, semesterName: 'Semester VIII', title: 'Fashion Journalism', topics: 'Report and write for fashion magazines, blogs, or columns with a critical lens.' },
+    { num: 61, semester: 8, semesterName: 'Semester VIII', title: 'Fashion Photography', topics: 'Learn fashion-specific photography, lighting, styling, and post-production.' },
+    { num: 62, semester: 8, semesterName: 'Semester VIII', title: 'Supply Chain Management', topics: 'Study the logistics of raw materials to final product delivery in fashion.' },
+    { num: 63, semester: 8, semesterName: 'Semester VIII', title: 'Digital Marketing & AI for Fashion Design', topics: 'Leverage AI tools, data analysis, and digital marketing to innovate design and reach.' },
+    { num: 64, semester: 8, semesterName: 'Semester VIII', title: 'Elective-Based Industrial Internship', topics: 'Choose an area of specialization to intern in, based on career goals.' },
+    { num: 65, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'Culmination of your journey through a final collection presented to industry experts.' }
+  ] },
   fashion_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
@@ -1083,6 +1157,8 @@ const SYLLABUS_CATALOGUE = {
   fashion_biz_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_vm:        { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_styling:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_msc:  { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
+  fashion_mdes: { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
   interior_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
@@ -1096,6 +1172,16 @@ function getSyllabusSessionInfo(modId, sessionNum, weeks) {
     if (found) return found;
   }
   return { num: sessionNum, title: `Session ${sessionNum}`, topics: '' };
+}
+
+// Is `semesterNum` unlocked for this student's module? Semester 1 is always unlocked; any
+// later semester unlocks once every session in the PRECEDING semester is approved. Mirrors
+// admin.html/index.html's isSemesterUnlocked() — kept in manual sync.
+function isSemesterUnlocked(syllabusSessions, studentSessions, semesterNum) {
+  if (semesterNum <= 1) return true;
+  const prevSessions = syllabusSessions.filter(s => s.semester === semesterNum - 1);
+  if (!prevSessions.length) return true;
+  return prevSessions.every(s => studentSessions[s.num] && studentSessions[s.num].approved);
 }
 
 async function approveSession(studentDocId, modId, sessionNum) {
@@ -1140,6 +1226,29 @@ async function rejectSession(studentDocId, modId, sessionNum) {
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+// Lets faculty undo an approval they (or another faculty member) gave by mistake — sends
+// the topic back to "not started" so the student can re-tick and get it re-approved.
+async function undoApprovedSession(studentDocId, modId, sessionNum) {
+  if (!confirm('Undo this approval? The topic will go back to "not started" for the student — they\'ll need to re-mark it complete and get it re-approved. This may also re-lock a later semester if this was the last topic keeping it unlocked.')) return;
+  try {
+    const studentRef = doc(db, 'cadd_students', studentDocId);
+    const snap = await getDoc(studentRef);
+    if (!snap.exists()) { showToast('Student not found', 'error'); return; }
+    const student = snap.data();
+    if (!student.modules || !student.modules[modId] || !student.modules[modId].sessions[sessionNum]) {
+      showToast('Session data not found', 'error'); return;
+    }
+    student.modules[modId].sessions[sessionNum] = {
+      studentTicked: false, tickedAt: null, approved: false, approvedBy: null, approvedAt: null, autoTicked: false
+    };
+    await updateDoc(studentRef, { modules: student.modules });
+    showToast('Approval undone.', 'warning');
+    await loadDashboard();
+    if (detailStudentId === studentDocId) await openStudentDetail(studentDocId);
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.undoApprovedSession = undoApprovedSession;
+
 async function openStudentDetail(studentDocId) {
   detailStudentId = studentDocId;
   const s = myStudents.find(x => x.docId === studentDocId);
@@ -1159,22 +1268,23 @@ async function openStudentDetail(studentDocId) {
     body.appendChild(sectionTitle);
 
     const totalSessions = mod.totalSessions || Object.keys(mod.sessions || {}).length;
-    let firstUnlockedSession = 1;
-    for (let n = 1; n <= totalSessions; n++) {
-      if (mod.sessions[n] && mod.sessions[n].approved) firstUnlockedSession = n + 1;
-    }
+    const syllabusSessions = SYLLABUS_CATALOGUE[modId] ? SYLLABUS_CATALOGUE[modId].sessions : [];
+    const hasSemesters = syllabusSessions.some(ss => ss.semester);
 
-    for (let n = 1; n <= totalSessions; n++) {
+    // Renders one topic/session row. `unlockedForFreePick` = true means this topic's
+    // semester is open, so — unlike the old strict single-session-at-a-time flow — it can
+    // be approved in any order, not just when it happens to be "next".
+    function renderSessionRow(n, unlockedForFreePick) {
       const sess = mod.sessions[n] || {};
       const myAssignment = getMyAssignmentForSession(mod, n);
-      if (!myAssignment) continue;
+      if (!myAssignment) return;
 
       const info = getSyllabusSessionInfo(modId, n, mod.weeks);
       let stateClass = 'locked';
-      let statusText = 'Locked — waiting on earlier sessions';
+      let statusText = 'Locked — waiting on a previous semester';
       if (sess.approved) { stateClass = 'approved'; statusText = `Approved by ${sess.approvedBy || 'faculty'}`; }
       else if (sess.studentTicked) { stateClass = 'pending'; statusText = sess.autoTicked ? 'Auto-ticked (logout) — pending your approval' : 'Pending your approval'; }
-      else if (n === firstUnlockedSession) { stateClass = ''; statusText = 'Unlocked — waiting for student to mark complete'; }
+      else if (unlockedForFreePick) { stateClass = ''; statusText = 'Unlocked — can be started/marked any time'; }
 
       const row = document.createElement('div');
       row.className = 'session-row ' + stateClass;
@@ -1184,6 +1294,8 @@ async function openStudentDetail(studentDocId) {
           <button class="btn btn-green btn-sm" onclick="approveSession('${s.docId}','${modId}',${n})">✅</button>
           <button class="btn btn-red btn-sm" onclick="rejectSession('${s.docId}','${modId}',${n})">✕</button>
         `;
+      } else if (stateClass === 'approved') {
+        actionsHtml = `<button class="btn btn-sm" style="background:rgba(255,255,255,0.08);color:var(--text2)" onclick="undoApprovedSession('${s.docId}','${modId}',${n})" title="Undo this approval">↩️ Undo</button>`;
       }
       row.innerHTML = `
         <div class="s-num">S${n}</div>
@@ -1194,6 +1306,29 @@ async function openStudentDetail(studentDocId) {
         <div class="session-row-actions">${actionsHtml}</div>
       `;
       body.appendChild(row);
+    }
+
+    if (hasSemesters) {
+      // Group by semester — every topic in an unlocked semester is shown as freely
+      // available (no forced order); locked semesters are collapsed to a single note.
+      const semNums = [...new Set(syllabusSessions.map(ss => ss.semester))].sort((a,b) => a-b);
+      semNums.forEach(semNum => {
+        const semSessions = syllabusSessions.filter(ss => ss.semester === semNum);
+        const unlocked = isSemesterUnlocked(syllabusSessions, mod.sessions || {}, semNum);
+        const semDone = semSessions.every(ss => mod.sessions[ss.num] && mod.sessions[ss.num].approved);
+        const semHeader = document.createElement('div');
+        semHeader.style.cssText = 'font-size:11px;font-weight:600;color:var(--text3);margin:10px 0 4px;';
+        semHeader.textContent = `${semDone ? '✅' : (unlocked ? '🔓' : '🔒')} ${semSessions[0].semesterName}${!unlocked ? ' — locked until the previous semester is fully approved' : ''}`;
+        body.appendChild(semHeader);
+        if (unlocked) {
+          semSessions.forEach(ss => renderSessionRow(ss.num, true));
+        }
+        // Locked semesters: nothing further to show/act on for this faculty member.
+      });
+    } else {
+      for (let n = 1; n <= totalSessions; n++) {
+        renderSessionRow(n, n === 1);
+      }
     }
   });
 
