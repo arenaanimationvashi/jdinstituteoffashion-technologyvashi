@@ -368,10 +368,26 @@ function getFacultyLeaveRanges(facultyDocId) {
   if (!facultyDocId) return [];
   return allFacultyLeave
     .filter(f => f.facultyDocId === facultyDocId && f.status === 'approved')
-    .map(f => ({ from: new Date(f.dateFrom + 'T00:00:00'), to: new Date(f.dateTo + 'T23:59:59') }));
+    .map(f => leaveRequestToRange(f))
+    .filter(Boolean);
 }
 function isDateInLeaveRanges(date, ranges) {
   return ranges.some(r => date >= r.from && date <= r.to);
+}
+// Turns one leave-request doc into a {from,to} range. Prefers stored dateFrom/dateTo, falls
+// back to a single day (the request date) for legacy approved requests that predate the
+// date-range fields — otherwise those silently contribute zero excluded days. Mirrors the
+// identical helper in admin.html/index.html — kept in sync.
+function leaveRequestToRange(r) {
+  if (r.dateFrom && r.dateTo) {
+    return { from: new Date(r.dateFrom + 'T00:00:00'), to: new Date(r.dateTo + 'T23:59:59') };
+  }
+  if (r.requestedAt) {
+    const d = new Date(r.requestedAt.seconds*1000); d.setHours(0,0,0,0);
+    const end = new Date(d); end.setHours(23,59,59,999);
+    return { from: d, to: end };
+  }
+  return null;
 }
 
 // Own-students' approved leave requests — fetched once at login, same pattern as faculty
@@ -390,8 +406,28 @@ async function loadStudentLeaveForStreaks() {
 function getStudentLeaveRanges(studentDocId) {
   if (!studentDocId) return [];
   return allStudentLeaveForStreaks
-    .filter(r => r.studentDocId === studentDocId && r.status === 'approved' && r.dateFrom && r.dateTo)
-    .map(r => ({ from: new Date(r.dateFrom + 'T00:00:00'), to: new Date(r.dateTo + 'T23:59:59') }));
+    .filter(r => r.studentDocId === studentDocId && r.status === 'approved')
+    .map(r => leaveRequestToRange(r))
+    .filter(Boolean);
+}
+
+// Institute-wide holidays — fetched once at login (same pattern as faculty leave), so the
+// Streak column also excludes declared holidays, not just leave. Mirrors admin.html/index.html.
+let holidaySet = new Set();
+async function loadHolidaysForStreaks() {
+  try {
+    const snap = await getDocs(collection(db, 'cadd_holidays'));
+    holidaySet = new Set(snap.docs.map(d => d.id));
+  } catch (e) {
+    console.error('Holidays fetch error:', e);
+    holidaySet = new Set();
+  }
+}
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function isHolidayDate(d) {
+  return holidaySet.has(localDateStr(d));
 }
 
 // Counts how many of a student's OWN scheduled attendance days (e.g. Mon/Tue/Wed/Thu)
@@ -408,7 +444,7 @@ function scheduledDaysMissed(fromDate, attendanceDays, leaveRanges) {
   cursor.setDate(cursor.getDate() + 1); // start counting the day AFTER their last attendance
   let missed = 0;
   while (cursor <= today) {
-    if ((!days.length || days.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, ranges)) missed++;
+    if ((!days.length || days.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, ranges) && !isHolidayDate(cursor)) missed++;
     cursor.setDate(cursor.getDate() + 1);
   }
   return missed;
@@ -538,6 +574,7 @@ async function loadDashboard() {
   await fetchFacAttendance(); // needed before renderMyStudents() so the Streak column has data
   await loadFacultyLeaveForStreaks(); // ditto, so the Streak column excludes approved faculty-leave days
   await loadStudentLeaveForStreaks(); // ditto, so it also excludes each student's own approved leave days
+  await loadHolidaysForStreaks(); // ditto, so it also excludes institute-wide holidays
 
   renderStats();
   renderPendingApprovals();
@@ -1159,7 +1196,61 @@ const SYLLABUS_CATALOGUE = {
   fashion_styling:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_msc:  { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
   fashion_mdes: { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
-  interior_bdes:      { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  interior_bdes: { sessions: [
+    // Semester I
+    { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Interior Design (Basics)', topics: 'Students are introduced to the fundamental principles of interior design, including space planning, design elements, and composition techniques. It helps lay a strong creative foundation.' },
+    { num: 2,  semester: 1, semesterName: 'Semester I', title: 'History (Indian)', topics: 'An exploration of traditional Indian architecture and interior styles, materials, and cultural relevance—essential for developing culturally aware designs.' },
+    { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Building Materials & Methods of Construction', topics: 'Covers properties, applications, and classifications of basic materials such as wood, stone, metal, and concrete, along with construction techniques relevant to interiors.' },
+    { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Digital Communication and Soft Skills', topics: 'Focuses on professional communication, presentation, teamwork, and interpersonal skills—critical for success in the design industry.' },
+    { num: 5,  semester: 1, semesterName: 'Semester I', title: 'CAD (AutoCAD 2D)', topics: 'Teaches the basics of computer-aided drafting with AutoCAD, enabling students to create accurate 2D design layouts and technical drawings.' },
+    { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Technical Representation of Drawings', topics: 'Students learn architectural drawing techniques and how to represent their ideas accurately through floor plans, elevations, and sections.' },
+    { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Applied Art & Textiles', topics: 'An artistic study of color, form, texture, and materials used in interiors, especially textiles, which play a key role in creating mood and function.' },
+    // Semester II
+    { num: 8,  semester: 2, semesterName: 'Semester II', title: 'Interior Design (Residential)', topics: 'A practical approach to designing private living spaces, such as apartments and houses. Students learn to accommodate lifestyle needs with aesthetics and utility.' },
+    { num: 9,  semester: 2, semesterName: 'Semester II', title: 'Sustainable Environment Design', topics: 'Introduces eco-friendly and sustainable practices in design, materials, lighting, and energy efficiency for responsible design solutions.' },
+    { num: 10, semester: 2, semesterName: 'Semester II', title: 'Building Materials & Methods of Construction', topics: 'Advanced study of materials and construction methods used in residential spaces, with focus on durability and design implications.' },
+    { num: 11, semester: 2, semesterName: 'Semester II', title: 'History', topics: 'Continues the exploration of architectural movements and styles, helping students understand global influences and evolution in design.' },
+    { num: 12, semester: 2, semesterName: 'Semester II', title: 'CAD (AutoCAD 2D + 3D)', topics: 'Advances their AutoCAD skills to include 3D modeling, giving students the ability to visualize and present their designs more effectively.' },
+    { num: 13, semester: 2, semesterName: 'Semester II', title: 'Interior Services', topics: 'Covers essentials of lighting, ventilation, plumbing, and electricity systems—crucial components in any interior design project.' },
+    { num: 14, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Students showcase their design talent and creativity in front of industry leaders, gaining real-time exposure and feedback.' },
+    // Semester III
+    { num: 15, semester: 3, semesterName: 'Semester III', title: 'Interior Design (Office)', topics: 'Focus on designing functional and visually appealing workspaces with attention to ergonomics, productivity, and brand identity.' },
+    { num: 16, semester: 3, semesterName: 'Semester III', title: 'History of Interior Design (Roman, Baroque, etc.)', topics: 'Study of Western design eras to help students appreciate historical influence and apply stylistic elements in modern contexts.' },
+    { num: 17, semester: 3, semesterName: 'Semester III', title: 'Interior Professional Practices – I', topics: 'Teaches students about contracts, client handling, project budgeting, and timelines—essential for managing real-world interior projects.' },
+    { num: 18, semester: 3, semesterName: 'Semester III', title: 'Furniture Design', topics: 'Introduces students to the art and science of designing furniture, including joinery, ergonomics, materials, and aesthetics.' },
+    { num: 19, semester: 3, semesterName: 'Semester III', title: 'Computer Design (SketchUp)', topics: 'Training in SketchUp for 3D modeling, rendering, and conceptualization, making it easier to present and pitch design ideas.' },
+    { num: 20, semester: 3, semesterName: 'Semester III', title: 'Interior Services (Plumbing)', topics: 'Understanding water supply, drainage systems, and plumbing layouts in residential and commercial interiors.' },
+    { num: 21, semester: 3, semesterName: 'Semester III', title: 'Basics of Vaastu', topics: 'A primer on traditional Indian spatial planning philosophy that considers energy flow, direction, and harmony in spaces.' },
+    // Semester IV
+    { num: 22, semester: 4, semesterName: 'Semester IV', title: 'Interior Design – II (Retail Showroom)', topics: 'Focuses on creating engaging, functional, and brand-aligned retail spaces that drive customer experience and sales.' },
+    { num: 23, semester: 4, semesterName: 'Semester IV', title: 'History', topics: 'Continues with in-depth studies of architectural and design evolution with a global perspective.' },
+    { num: 24, semester: 4, semesterName: 'Semester IV', title: 'Interior Professional Practice – II', topics: 'Advanced exposure to managing client relationships, ethical practice, licensing, billing, and documentation.' },
+    { num: 25, semester: 4, semesterName: 'Semester IV', title: 'Furniture Design (Retail Store Project)', topics: 'Hands-on furniture design for a retail environment, encouraging students to balance aesthetics with function.' },
+    { num: 26, semester: 4, semesterName: 'Semester IV', title: 'Computer Design (Photoshop)', topics: 'Equips students with photo-editing, visual rendering, and presentation skills to communicate concepts visually.' },
+    { num: 27, semester: 4, semesterName: 'Semester IV', title: 'Interior Services (Electricity)', topics: 'Learn to plan lighting and electrical layouts, load calculations, and integration with design aesthetics.' },
+    { num: 28, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Students present themed design projects to industry leaders, gaining exposure and recognition.' },
+    // Semester V
+    { num: 29, semester: 5, semesterName: 'Semester V', title: 'Interior Design (Hospitality)', topics: 'Designing hotels, lounges, and resorts with focus on ambience, guest experience, and cultural relevance.' },
+    { num: 30, semester: 5, semesterName: 'Semester V', title: 'History of Architecture', topics: 'Comprehensive study of architecture movements—from classical to modern—to inspire contextual design thinking.' },
+    { num: 31, semester: 5, semesterName: 'Semester V', title: 'Furniture Design', topics: 'Advanced furniture concepts exploring modular systems, sustainability, and space-saving techniques.' },
+    { num: 32, semester: 5, semesterName: 'Semester V', title: 'Computer Design (3ds Max)', topics: 'Advanced 3D rendering software used for realistic visualizations and walkthroughs of interior spaces.' },
+    { num: 33, semester: 5, semesterName: 'Semester V', title: 'Interior Services (HVAC & Fire Protection Systems)', topics: 'Understanding Heating, Ventilation, Air Conditioning systems and fire safety design in compliance with codes.' },
+    // Semester VI
+    { num: 34, semester: 6, semesterName: 'Semester VI', title: 'Interior Design (Institution / Meditation Space / Commercial Space / Two-Storey Bungalow)', topics: 'Students choose complex projects to work on, focusing on technical, aesthetic, and conceptual mastery.' },
+    { num: 35, semester: 6, semesterName: 'Semester VI', title: 'Landscape Design', topics: 'Learning to integrate nature with built environments through site planning, garden design, and sustainability.' },
+    { num: 36, semester: 6, semesterName: 'Semester VI', title: 'Working Drawings', topics: 'Develop complete technical drawing sets used in real-life execution—plans, elevations, details, and service drawings.' },
+    { num: 37, semester: 6, semesterName: 'Semester VI', title: 'Internship', topics: 'Students apply their classroom learning to industry settings, gaining hands-on experience under professional mentorship.' },
+    { num: 38, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Final project presentation judged by industry experts, often leading to placements and collaborations.' },
+    // Semester VII
+    { num: 39, semester: 7, semesterName: 'Semester VII', title: 'Interior Design (Cultural Centre)', topics: 'Students explore how to design culturally significant public spaces such as art galleries, museums, and heritage centres, blending traditional aesthetics with modern functionality.' },
+    { num: 40, semester: 7, semesterName: 'Semester VII', title: 'Research Methodology', topics: 'Introduces students to the basics of academic and industry-focused research — framing research questions, conducting surveys or interviews, analyzing data, and applying findings to design projects.' },
+    { num: 41, semester: 7, semesterName: 'Semester VII', title: 'Internship', topics: 'Students undergo hands-on training in professional interior design firms, architecture studios, or related businesses, building portfolio and professional connections before graduation.' },
+    // Semester VIII
+    { num: 42, semester: 8, semesterName: 'Semester VIII', title: 'Interior Design (Institute / Meditation Space / Commercial Space / Two-Storey Bungalow)', topics: 'The capstone design module — students choose from complex project typologies and create a comprehensive design solution applying space planning, services, sustainability, user behavior, and aesthetics.' },
+    { num: 43, semester: 8, semesterName: 'Semester VIII', title: 'Project Management', topics: 'Students gain insights into handling large-scale interior projects — budgeting, scheduling, procurement, manpower coordination, and vendor management.' },
+    { num: 44, semester: 8, semesterName: 'Semester VIII', title: 'Set Design', topics: 'Introduces students to the world of film, theatre, and event set design — building temporary spaces that tell stories visually while considering materials, lighting, and layout.' },
+    { num: 45, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'The grand culmination of the course — students present their final design projects in front of an esteemed panel of industry experts and peers.' }
+  ] },
   interior_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   interior_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
