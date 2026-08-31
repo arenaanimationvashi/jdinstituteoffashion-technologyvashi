@@ -278,6 +278,7 @@
     <div class="nav-item" data-page="feedback" onclick="showPage('feedback')"><span class="icon">💬</span> Feedback</div>
     <div class="nav-item" data-page="leaveRequests" onclick="showPage('leaveRequests')"><span class="icon">🌴</span> Leave Requests</div>
     <div class="nav-item" data-page="facultyLeave" onclick="showPage('facultyLeave')"><span class="icon">🧳</span> Faculty Leave</div>
+    <div class="nav-item" data-page="holidays" onclick="showPage('holidays')"><span class="icon">🎉</span> Holidays</div>
     <div class="nav-item" data-page="addStudent" onclick="showPage('addStudent')"><span class="icon">➕</span> Add Student</div>
     <div class="nav-section">Faculty</div>
     <div class="nav-item" data-page="facultyAccounts" onclick="showPage('facultyAccounts')"><span class="icon">🧑‍🏫</span> Faculty Accounts</div>
@@ -337,6 +338,7 @@
             <option value="notScheduled">➖ Not Scheduled Today</option>
             <option value="facultyLeave">🧳 Faculty on Leave</option>
             <option value="onLeave">🌴 Own Approved Leave</option>
+            <option value="holiday">🎉 Institute Holiday</option>
           </select>
           <select id="slotDetailCourseFilter" onchange="renderSlotDetail()"><option value="">All Courses</option></select>
           <select id="slotDetailFacultyFilter" onchange="renderSlotDetail()"><option value="">All Faculty</option></select>
@@ -582,6 +584,30 @@
         <table>
           <thead><tr><th>Faculty</th><th>From</th><th>To</th><th>Reason</th><th>Requested By</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="facultyLeaveTable"><tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HOLIDAYS -->
+    <div class="page" id="page-holidays">
+      <div class="page-header"><h1>🎉 Institute Holidays</h1></div>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">
+        Institute-wide closures — applies to every student and faculty at once, unlike individual leave.
+        A holiday added for a past date fixes that date's classification everywhere (Streak, Days Absent,
+        Live Slots, Day-by-Day Log) immediately, the next time each view loads — nothing needs to be
+        recalculated manually.
+      </p>
+      <div class="card" style="margin-bottom:18px">
+        <div class="search-row">
+          <input type="date" id="holDate" title="Holiday date"/>
+          <input type="text" id="holLabel" placeholder="Label (e.g. Diwali, Independence Day)"/>
+          <button class="btn btn-orange" onclick="addHoliday()">+ Add Holiday</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Day</th><th>Label</th><th>Actions</th></tr></thead>
+          <tbody id="holidaysTable"><tr><td colspan="4" style="color:var(--text3);text-align:center;padding:20px">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1169,6 +1195,65 @@ SYLLABUS_CATALOGUE['fashion_bdes'] = { sessions: [
 // any later semester unlocks once every session belonging to the PRECEDING semester is
 // approved. Sessions within an unlocked semester have no forced order — any of them can be
 // started/ticked/approved in any sequence.
+// ── REAL SYLLABUS: B.Des in Interior Design (8 semesters) ──
+// Injected from JD's official course PDF. Same pattern as fashion_bdes above — `num` runs
+// sequentially across the whole program, `semester`/`semesterName` group the UI.
+SYLLABUS_CATALOGUE['interior_bdes'] = { sessions: [
+  // Semester I
+  { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Interior Design (Basics)', topics: 'Students are introduced to the fundamental principles of interior design, including space planning, design elements, and composition techniques. It helps lay a strong creative foundation.' },
+  { num: 2,  semester: 1, semesterName: 'Semester I', title: 'History (Indian)', topics: 'An exploration of traditional Indian architecture and interior styles, materials, and cultural relevance—essential for developing culturally aware designs.' },
+  { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Building Materials & Methods of Construction', topics: 'Covers properties, applications, and classifications of basic materials such as wood, stone, metal, and concrete, along with construction techniques relevant to interiors.' },
+  { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Digital Communication and Soft Skills', topics: 'Focuses on professional communication, presentation, teamwork, and interpersonal skills—critical for success in the design industry.' },
+  { num: 5,  semester: 1, semesterName: 'Semester I', title: 'CAD (AutoCAD 2D)', topics: 'Teaches the basics of computer-aided drafting with AutoCAD, enabling students to create accurate 2D design layouts and technical drawings.' },
+  { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Technical Representation of Drawings', topics: 'Students learn architectural drawing techniques and how to represent their ideas accurately through floor plans, elevations, and sections.' },
+  { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Applied Art & Textiles', topics: 'An artistic study of color, form, texture, and materials used in interiors, especially textiles, which play a key role in creating mood and function.' },
+  // Semester II
+  { num: 8,  semester: 2, semesterName: 'Semester II', title: 'Interior Design (Residential)', topics: 'A practical approach to designing private living spaces, such as apartments and houses. Students learn to accommodate lifestyle needs with aesthetics and utility.' },
+  { num: 9,  semester: 2, semesterName: 'Semester II', title: 'Sustainable Environment Design', topics: 'Introduces eco-friendly and sustainable practices in design, materials, lighting, and energy efficiency for responsible design solutions.' },
+  { num: 10, semester: 2, semesterName: 'Semester II', title: 'Building Materials & Methods of Construction', topics: 'Advanced study of materials and construction methods used in residential spaces, with focus on durability and design implications.' },
+  { num: 11, semester: 2, semesterName: 'Semester II', title: 'History', topics: 'Continues the exploration of architectural movements and styles, helping students understand global influences and evolution in design.' },
+  { num: 12, semester: 2, semesterName: 'Semester II', title: 'CAD (AutoCAD 2D + 3D)', topics: 'Advances their AutoCAD skills to include 3D modeling, giving students the ability to visualize and present their designs more effectively.' },
+  { num: 13, semester: 2, semesterName: 'Semester II', title: 'Interior Services', topics: 'Covers essentials of lighting, ventilation, plumbing, and electricity systems—crucial components in any interior design project.' },
+  { num: 14, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Students showcase their design talent and creativity in front of industry leaders, gaining real-time exposure and feedback.' },
+  // Semester III
+  { num: 15, semester: 3, semesterName: 'Semester III', title: 'Interior Design (Office)', topics: 'Focus on designing functional and visually appealing workspaces with attention to ergonomics, productivity, and brand identity.' },
+  { num: 16, semester: 3, semesterName: 'Semester III', title: 'History of Interior Design (Roman, Baroque, etc.)', topics: 'Study of Western design eras to help students appreciate historical influence and apply stylistic elements in modern contexts.' },
+  { num: 17, semester: 3, semesterName: 'Semester III', title: 'Interior Professional Practices – I', topics: 'Teaches students about contracts, client handling, project budgeting, and timelines—essential for managing real-world interior projects.' },
+  { num: 18, semester: 3, semesterName: 'Semester III', title: 'Furniture Design', topics: 'Introduces students to the art and science of designing furniture, including joinery, ergonomics, materials, and aesthetics.' },
+  { num: 19, semester: 3, semesterName: 'Semester III', title: 'Computer Design (SketchUp)', topics: 'Training in SketchUp for 3D modeling, rendering, and conceptualization, making it easier to present and pitch design ideas.' },
+  { num: 20, semester: 3, semesterName: 'Semester III', title: 'Interior Services (Plumbing)', topics: 'Understanding water supply, drainage systems, and plumbing layouts in residential and commercial interiors.' },
+  { num: 21, semester: 3, semesterName: 'Semester III', title: 'Basics of Vaastu', topics: 'A primer on traditional Indian spatial planning philosophy that considers energy flow, direction, and harmony in spaces.' },
+  // Semester IV
+  { num: 22, semester: 4, semesterName: 'Semester IV', title: 'Interior Design – II (Retail Showroom)', topics: 'Focuses on creating engaging, functional, and brand-aligned retail spaces that drive customer experience and sales.' },
+  { num: 23, semester: 4, semesterName: 'Semester IV', title: 'History', topics: 'Continues with in-depth studies of architectural and design evolution with a global perspective.' },
+  { num: 24, semester: 4, semesterName: 'Semester IV', title: 'Interior Professional Practice – II', topics: 'Advanced exposure to managing client relationships, ethical practice, licensing, billing, and documentation.' },
+  { num: 25, semester: 4, semesterName: 'Semester IV', title: 'Furniture Design (Retail Store Project)', topics: 'Hands-on furniture design for a retail environment, encouraging students to balance aesthetics with function.' },
+  { num: 26, semester: 4, semesterName: 'Semester IV', title: 'Computer Design (Photoshop)', topics: 'Equips students with photo-editing, visual rendering, and presentation skills to communicate concepts visually.' },
+  { num: 27, semester: 4, semesterName: 'Semester IV', title: 'Interior Services (Electricity)', topics: 'Learn to plan lighting and electrical layouts, load calculations, and integration with design aesthetics.' },
+  { num: 28, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Students present themed design projects to industry leaders, gaining exposure and recognition.' },
+  // Semester V
+  { num: 29, semester: 5, semesterName: 'Semester V', title: 'Interior Design (Hospitality)', topics: 'Designing hotels, lounges, and resorts with focus on ambience, guest experience, and cultural relevance.' },
+  { num: 30, semester: 5, semesterName: 'Semester V', title: 'History of Architecture', topics: 'Comprehensive study of architecture movements—from classical to modern—to inspire contextual design thinking.' },
+  { num: 31, semester: 5, semesterName: 'Semester V', title: 'Furniture Design', topics: 'Advanced furniture concepts exploring modular systems, sustainability, and space-saving techniques.' },
+  { num: 32, semester: 5, semesterName: 'Semester V', title: 'Computer Design (3ds Max)', topics: 'Advanced 3D rendering software used for realistic visualizations and walkthroughs of interior spaces.' },
+  { num: 33, semester: 5, semesterName: 'Semester V', title: 'Interior Services (HVAC & Fire Protection Systems)', topics: 'Understanding Heating, Ventilation, Air Conditioning systems and fire safety design in compliance with codes.' },
+  // Semester VI
+  { num: 34, semester: 6, semesterName: 'Semester VI', title: 'Interior Design (Institution / Meditation Space / Commercial Space / Two-Storey Bungalow)', topics: 'Students choose complex projects to work on, focusing on technical, aesthetic, and conceptual mastery.' },
+  { num: 35, semester: 6, semesterName: 'Semester VI', title: 'Landscape Design', topics: 'Learning to integrate nature with built environments through site planning, garden design, and sustainability.' },
+  { num: 36, semester: 6, semesterName: 'Semester VI', title: 'Working Drawings', topics: 'Develop complete technical drawing sets used in real-life execution—plans, elevations, details, and service drawings.' },
+  { num: 37, semester: 6, semesterName: 'Semester VI', title: 'Internship', topics: 'Students apply their classroom learning to industry settings, gaining hands-on experience under professional mentorship.' },
+  { num: 38, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Final project presentation judged by industry experts, often leading to placements and collaborations.' },
+  // Semester VII
+  { num: 39, semester: 7, semesterName: 'Semester VII', title: 'Interior Design (Cultural Centre)', topics: 'Students explore how to design culturally significant public spaces such as art galleries, museums, and heritage centres, blending traditional aesthetics with modern functionality.' },
+  { num: 40, semester: 7, semesterName: 'Semester VII', title: 'Research Methodology', topics: 'Introduces students to the basics of academic and industry-focused research — framing research questions, conducting surveys or interviews, analyzing data, and applying findings to design projects.' },
+  { num: 41, semester: 7, semesterName: 'Semester VII', title: 'Internship', topics: 'Students undergo hands-on training in professional interior design firms, architecture studios, or related businesses, building portfolio and professional connections before graduation.' },
+  // Semester VIII
+  { num: 42, semester: 8, semesterName: 'Semester VIII', title: 'Interior Design (Institute / Meditation Space / Commercial Space / Two-Storey Bungalow)', topics: 'The capstone design module — students choose from complex project typologies and create a comprehensive design solution applying space planning, services, sustainability, user behavior, and aesthetics.' },
+  { num: 43, semester: 8, semesterName: 'Semester VIII', title: 'Project Management', topics: 'Students gain insights into handling large-scale interior projects — budgeting, scheduling, procurement, manpower coordination, and vendor management.' },
+  { num: 44, semester: 8, semesterName: 'Semester VIII', title: 'Set Design', topics: 'Introduces students to the world of film, theatre, and event set design — building temporary spaces that tell stories visually while considering materials, lighting, and layout.' },
+  { num: 45, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'The grand culmination of the course — students present their final design projects in front of an esteemed panel of industry experts and peers.' }
+]};
+
 function isSemesterUnlocked(syllabusSessions, studentSessions, semesterNum) {
   if (semesterNum <= 1) return true;
   const prevSessions = syllabusSessions.filter(s => s.semester === semesterNum - 1);
@@ -1317,6 +1402,7 @@ async function init() {
   await loadStudents();
   await loadAttendance();
   await loadFacultyLeave();
+  await loadHolidays(); // must load before filterStudents() so Streak column reflects holiday exclusions
   await loadLeaveRequests(); // needed here (not just on-page-visit) so the bell has accurate counts from the start
   filterStudents(); // re-render so the Streak column reflects attendance
                      // (it rendered once already inside loadStudents(), before
@@ -2528,10 +2614,105 @@ function getFacultyLeaveRanges(facultyDocId) {
   if (!facultyDocId) return [];
   return allFacultyLeave
     .filter(f => f.facultyDocId === facultyDocId && f.status === 'approved')
-    .map(f => ({ from: new Date(f.dateFrom+'T00:00:00'), to: new Date(f.dateTo+'T23:59:59') }));
+    .map(f => leaveRequestToRange(f))
+    .filter(Boolean);
 }
 function isDateInLeaveRanges(date, ranges) {
   return ranges.some(r => date >= r.from && date <= r.to);
+}
+
+// ── INSTITUTE HOLIDAYS ── (see nav "🎉 Holidays")
+// Doc ID IS the date string ('YYYY-MM-DD') so re-adding the same date overwrites instead of
+// duplicating. holidaySet is rebuilt every load so retroactive additions (a holiday added for
+// a past date) immediately fix that date's classification everywhere the next time each view
+// recomputes — nothing "locks in".
+let allHolidays = [];
+let holidaySet = new Set();
+
+// NOT toISOString() — that's UTC and can roll a late-evening local date to the wrong calendar
+// day. This must match how every other date-classification function in this file builds keys.
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function isHolidayDate(d) {
+  return holidaySet.has(localDateStr(d));
+}
+
+async function loadHolidays() {
+  try {
+    const snap = await getDocs(collection(db,'cadd_holidays'));
+    allHolidays = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.date < b.date ? -1 : 1);
+    holidaySet = new Set(allHolidays.map(h => h.date));
+    renderHolidaysTable();
+  } catch(e) {
+    console.error('Load holidays error:', e);
+    const tb = document.getElementById('holidaysTable');
+    if (tb) tb.innerHTML = `<tr><td colspan="4" style="color:var(--red);text-align:center;padding:20px">Error loading holidays: ${e.message}</td></tr>`;
+  }
+}
+window.loadHolidays = loadHolidays;
+
+function renderHolidaysTable() {
+  const tb = document.getElementById('holidaysTable');
+  if (!tb) return;
+  if (!allHolidays.length) {
+    tb.innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:20px">No holidays added yet.</td></tr>';
+    return;
+  }
+  const weekdayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  tb.innerHTML = '';
+  allHolidays.forEach(h => {
+    const d = new Date(h.date+'T00:00:00');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="color:var(--text3)">${weekdayNames[d.getDay()]}</td>
+      <td>${h.label || '—'}</td>
+      <td><button class="btn btn-red btn-sm" onclick="deleteHoliday('${h.id}')">🗑️ Delete</button></td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+window.renderHolidaysTable = renderHolidaysTable;
+
+async function addHoliday() {
+  const dateVal = document.getElementById('holDate').value;
+  const label = document.getElementById('holLabel').value.trim();
+  if (!dateVal) { showToast('Pick a date first', 'error'); return; }
+  if (!label) { showToast('Give the holiday a label', 'error'); return; }
+  try {
+    await setDoc(doc(db,'cadd_holidays', dateVal), { date: dateVal, label, createdAt: Timestamp.now() });
+    document.getElementById('holDate').value = '';
+    document.getElementById('holLabel').value = '';
+    showToast('Holiday added — excluded from absence calculations everywhere.', 'success');
+    await loadHolidays();
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.addHoliday = addHoliday;
+
+async function deleteHoliday(dateId) {
+  if (!confirm('Delete this holiday? Any day previously covered by it will start counting toward absence again.')) return;
+  try {
+    await deleteDoc(doc(db,'cadd_holidays', dateId));
+    showToast('Holiday deleted', 'warning');
+    await loadHolidays();
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.deleteHoliday = deleteHoliday;
+// Turns one leave-request doc into a {from,to} date range. Prefers the stored dateFrom/dateTo,
+// but falls back to a single day (the day it was requested) for legacy approved requests that
+// predate the dateFrom/dateTo fields — otherwise those silently contribute ZERO excluded days
+// and the student/faculty shows "Absent" for a period they actually had approved leave for.
+function leaveRequestToRange(r) {
+  if (r.dateFrom && r.dateTo) {
+    return { from: new Date(r.dateFrom+'T00:00:00'), to: new Date(r.dateTo+'T23:59:59') };
+  }
+  if (r.requestedAt) {
+    const d = new Date(r.requestedAt.seconds*1000); d.setHours(0,0,0,0);
+    const end = new Date(d); end.setHours(23,59,59,999);
+    return { from: d, to: end };
+  }
+  return null;
 }
 // A student's own approved leave date-ranges (distinct from their faculty's leave) — also
 // excluded from absence calculations, since an approved leave is, by definition, an excused
@@ -2539,8 +2720,9 @@ function isDateInLeaveRanges(date, ranges) {
 function getStudentLeaveRanges(studentDocId) {
   if (!studentDocId) return [];
   return allLeaveRequests
-    .filter(r => r.studentDocId === studentDocId && r.status === 'approved' && r.dateFrom && r.dateTo)
-    .map(r => ({ from: new Date(r.dateFrom+'T00:00:00'), to: new Date(r.dateTo+'T23:59:59') }));
+    .filter(r => r.studentDocId === studentDocId && r.status === 'approved')
+    .map(r => leaveRequestToRange(r))
+    .filter(Boolean);
 }
 
 function populateAdminFacultyLeaveDropdown() {
@@ -3336,7 +3518,7 @@ function scheduledDaysMissed(fromDate, attendanceDays, leaveRanges) {
   const today = new Date(now); today.setHours(0,0,0,0);
   cursor.setDate(cursor.getDate()+1); // start counting from the day AFTER their last attendance
   while (cursor <= today) {
-    if ((!days.length || days.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, ranges)) missed++;
+    if ((!days.length || days.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, ranges) && !isHolidayDate(cursor)) missed++;
     cursor.setDate(cursor.getDate()+1);
   }
   return missed;
@@ -3422,7 +3604,7 @@ async function loadModalAttendance(docId, s) {
   let totalScheduledDays = 0;
   { const cursor = new Date(admDate);
     while (cursor <= today0) {
-      if ((!schedDays.length || schedDays.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, excludedRanges)) totalScheduledDays++;
+      if ((!schedDays.length || schedDays.includes(cursor.getDay())) && !isDateInLeaveRanges(cursor, excludedRanges) && !isHolidayDate(cursor)) totalScheduledDays++;
       cursor.setDate(cursor.getDate()+1);
     }
   }
@@ -3520,6 +3702,35 @@ async function autoTickCurrentSessionForStudent(studentDocId) {
 }
 
 async function saveEditStudent() {
+  const newStatus = document.getElementById('ed-status').value;
+  const existing = allStudents.find(x => x.docId === editingStudentId);
+  const prevStatus = existing ? existing.status : null;
+
+  // Bug fix: putting a student "on_leave" straight from this Edit form just writes a raw
+  // status flag with NO dated leave-request document behind it — so getStudentLeaveRanges()
+  // (see above) has nothing to find, the student still shows "Absent" for those days, and
+  // they get no "I'm Back" revoke button since there's no request to revoke. Intercept the
+  // transition and steer toward the dated Leave Requests flow instead, which creates a real
+  // record (same one submitAdminStudentLeave() creates — see Leave Requests page).
+  if (newStatus === 'on_leave' && prevStatus !== 'on_leave') {
+    const goToDatedFlow = confirm(
+      'To put a student on leave, use the dated Leave form instead — that way they can revoke it ' +
+      'themselves once they return, and those days won\'t count as absent.\n\n' +
+      'Open that form now for this student? (Cancel to save without a dated leave record — not recommended.)'
+    );
+    if (goToDatedFlow) {
+      const studentIdForRedirect = editingStudentId;
+      closeModal('studentModal');
+      showPage('leaveRequests');
+      populateAdminStudentLeaveDropdown();
+      document.getElementById('adminStudentLeaveForm').style.display = 'block';
+      document.getElementById('aslStudent').value = studentIdForRedirect;
+      showToast('Pick dates below to put this student on leave.', 'warning');
+      return; // don't save the raw status flag — the dated flow sets status itself
+    }
+    showToast('Saved — but this student won\'t be excluded from absence stats or get a revoke option without a dated leave record.', 'warning');
+  }
+
   const admDateVal = document.getElementById('ed-admDate').value;
   const validityDateVal = document.getElementById('ed-validityDate').value;
   const trackingStartVal = document.getElementById('ed-trackingStartDate').value;
@@ -3530,7 +3741,7 @@ async function saveEditStudent() {
     course:document.getElementById('ed-course').value,
     faculty:document.getElementById('ed-faculty').value,
     slot:document.getElementById('ed-slot').value,
-    status:document.getElementById('ed-status').value,
+    status:newStatus,
     attendanceDays:Array.from(ed_selectedDays).sort()
   };
   if (admDateVal) data.admissionDate = Timestamp.fromDate(new Date(admDateVal));
@@ -3607,9 +3818,18 @@ async function autoCloseStaleAttendanceSessions() {
 }
 
 // ── ATTENDANCE LOG ──
+// Institute-wide, ordered-desc, capped query — feeds the shared `allAttendance` array used by
+// the Streak column, the Attendance Log table, etc. This cap is NOT per-student — once this
+// many records accumulate institute-wide (which can happen within days for an active
+// institute), a specific student's older records silently drop out of any view built on this
+// shared array, even though they still exist in Firestore. Bumped 200→4000 as a blanket
+// safety margin. Any view that needs ONE student's COMPLETE history (the profile modal's
+// attendance list, the Day-by-Day Log) must keep using its own dedicated
+// where('studentDocId','==',...) query instead of this shared capped array — never rely on
+// this array for a single student's full record.
 async function loadAttendance() {
   await autoCloseStaleAttendanceSessions();
-  const q=query(collection(db,'cadd_attendance'),orderBy('checkIn','desc'),limit(200));
+  const q=query(collection(db,'cadd_attendance'),orderBy('checkIn','desc'),limit(4000));
   const snap=await getDocs(q);
   allAttendance=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderAttendance(allAttendance);
@@ -3915,9 +4135,10 @@ async function loadLiveSlots() {
     });
 
     liveSlotsData = {};
-    allSlotNames.forEach(sn => { liveSlotsData[sn] = { present:[], left:[], absent:[], notScheduled:[], facultyLeave:[], onLeave:[] }; });
+    allSlotNames.forEach(sn => { liveSlotsData[sn] = { present:[], left:[], absent:[], notScheduled:[], facultyLeave:[], onLeave:[], holiday:[] }; });
 
     const today0ForSlots = new Date(); today0ForSlots.setHours(0,0,0,0);
+    const holidayToday = isHolidayDate(today0ForSlots);
     activeStudents.forEach(s=>{
       const slotName = s.slot || 'Unassigned';
       // Schedule-aware, same logic as the attendance-fix elsewhere: only students actually
@@ -3932,6 +4153,11 @@ async function loadLiveSlots() {
         liveSlotsData[slotName].present.push(entry);
       } else if (rec && rec.checkOut) {
         liveSlotsData[slotName].left.push(entry);
+      } else if (holidayToday) {
+        // Institute Holiday takes priority over every other unrecorded status — a student
+        // with no check-in on a declared holiday isn't absent, on leave, or unscheduled,
+        // they're just off for the day like everyone else.
+        liveSlotsData[slotName].holiday.push(entry);
       } else if (scheduledToday && studentOnLeaveToday) {
         // Student's own approved leave covers today — an excused absence, not a real one.
         liveSlotsData[slotName].onLeave.push(entry);
@@ -3952,13 +4178,13 @@ async function loadLiveSlots() {
 
     allSlotNames.forEach(sn=>{
       const d = liveSlotsData[sn];
-      const totalInSlot = d.present.length + d.left.length + d.absent.length + d.notScheduled.length + d.facultyLeave.length + d.onLeave.length;
+      const totalInSlot = d.present.length + d.left.length + d.absent.length + d.notScheduled.length + d.facultyLeave.length + d.onLeave.length + d.holiday.length;
       const div=document.createElement('div');
       div.className='slot-card';
       div.id='slot-card-'+cssSafe(sn);
       div.onclick=()=>showSlotDetail(sn);
       div.innerHTML=`<div class="sname">${sn}</div><div class="scount">${d.present.length}</div><div class="slabel">active now · ${totalInSlot} total in slot</div>
-        <div class="smini"><span>🟢 ${d.present.length}</span><span>✅ ${d.left.length}</span><span>⚪ ${d.absent.length}</span><span>➖ ${d.notScheduled.length}</span>${d.facultyLeave.length ? `<span>🧳 ${d.facultyLeave.length}</span>` : ''}${d.onLeave.length ? `<span>🌴 ${d.onLeave.length}</span>` : ''}</div>`;
+        <div class="smini"><span>🟢 ${d.present.length}</span><span>✅ ${d.left.length}</span><span>⚪ ${d.absent.length}</span><span>➖ ${d.notScheduled.length}</span>${d.facultyLeave.length ? `<span>🧳 ${d.facultyLeave.length}</span>` : ''}${d.onLeave.length ? `<span>🌴 ${d.onLeave.length}</span>` : ''}${d.holiday.length ? `<span>🎉 ${d.holiday.length}</span>` : ''}</div>`;
       grid.appendChild(div);
     });
   } catch(e) {
@@ -4000,7 +4226,7 @@ window.closeSlotDetail = closeSlotDetail;
 
 function populateSlotDetailFilterOptions(slotName) {
   const d = liveSlotsData[slotName]; if (!d) return;
-  const all = [...d.present, ...d.left, ...d.absent, ...d.notScheduled, ...d.facultyLeave, ...d.onLeave];
+  const all = [...d.present, ...d.left, ...d.absent, ...d.notScheduled, ...d.facultyLeave, ...d.onLeave, ...d.holiday];
   const courses = new Set(all.map(e=>e.student.course).filter(Boolean));
   const faculties = new Set(all.map(e=>e.student.faculty).filter(Boolean));
   const courseSel = document.getElementById('slotDetailCourseFilter');
@@ -4033,6 +4259,7 @@ function renderSlotDetail() {
   d.notScheduled.forEach(e=>rows.push({...e, statusKey:'notScheduled'}));
   d.facultyLeave.forEach(e=>rows.push({...e, statusKey:'facultyLeave'}));
   d.onLeave.forEach(e=>rows.push({...e, statusKey:'onLeave'}));
+  d.holiday.forEach(e=>rows.push({...e, statusKey:'holiday'}));
 
   rows = rows.filter(row => {
     const s = row.student;
@@ -4048,7 +4275,7 @@ function renderSlotDetail() {
     return;
   }
 
-  const order = { present:0, left:1, absent:2, onLeave:3, facultyLeave:4, notScheduled:5 };
+  const order = { present:0, left:1, holiday:2, absent:3, onLeave:4, facultyLeave:5, notScheduled:6 };
   rows.sort((a,b)=> order[a.statusKey]-order[b.statusKey] || (a.student.name||'').localeCompare(b.student.name||''));
 
   tb.innerHTML='';
@@ -4072,6 +4299,8 @@ function renderSlotDetail() {
       statusBadge = '<span class="badge" style="background:rgba(122,132,255,0.15);color:#7A84FF;border:1px solid rgba(122,132,255,0.3)">🧳 Faculty on Leave</span>';
     } else if (row.statusKey==='onLeave') {
       statusBadge = '<span class="badge" style="background:rgba(76,175,130,0.15);color:var(--green);border:1px solid rgba(76,175,130,0.3)">🌴 Own Approved Leave</span>';
+    } else if (row.statusKey==='holiday') {
+      statusBadge = '<span class="badge" style="background:rgba(240,192,64,0.15);color:#F0C040;border:1px solid rgba(240,192,64,0.3)">🎉 Institute Holiday</span>';
     } else {
       statusBadge = '<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);border:1px solid var(--border)">➖ Not Scheduled Today</span>';
     }
@@ -4102,6 +4331,7 @@ function showPage(id) {
   if(id==='feedback') loadFeedback();
   if(id==='leaveRequests') loadLeaveRequests();
   if(id==='facultyLeave') { populateAdminFacultyLeaveDropdown(); loadFacultyLeavePage(); }
+  if(id==='holidays') loadHolidays();
   if(id==='announcement') loadAnnouncement();
 }
 
