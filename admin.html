@@ -704,6 +704,14 @@
           <button class="btn btn-ghost" onclick="exportAttendancePDF()">📄 Export PDF</button>
         </div>
       </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📅 Pull one student's full history</div>
+        <div class="search-row">
+          <input type="text" id="dlPickerSearch" placeholder="Type a name or student ID to filter the list below…" oninput="filterDayLogPicker()"/>
+          <select id="dlPickerSelect" style="min-width:220px"></select>
+          <button class="btn btn-orange" onclick="openStudentDayLogFromPicker()">Pull Full Day-by-Day Log</button>
+        </div>
+      </div>
       <div class="search-row">
         <input type="text" id="attSearch" placeholder="Search by student name or ID…" oninput="filterAttendance()"/>
         <input type="date" id="attDateFrom" onchange="filterAttendance()"/>
@@ -945,6 +953,7 @@
             <div class="att-stat"><div class="av red" id="ms-absent">—</div><div class="al">Days Absent</div></div>
             <div class="att-stat"><div class="av orange" id="ms-hours">—</div><div class="al">Total Hours</div></div>
           </div>
+          <button class="btn btn-ghost btn-sm" style="margin-bottom:14px" onclick="openCurrentStudentDayLog()">📅 View Full Day-by-Day Log</button>
           <div id="activeSessionBanner" style="display:none; background:rgba(76,175,130,0.08); border:1px solid rgba(76,175,130,0.25); border-radius:10px; padding:12px 16px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <span style="font-size:13px; color:var(--green)">🟢 Session currently active</span>
             <div style="display:flex;gap:8px">
@@ -975,6 +984,44 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- DAY-BY-DAY LOG MODAL -->
+<div class="modal-overlay" id="dayLogModal" style="display:none">
+  <div class="modal" style="max-width:920px">
+    <div class="modal-header">
+      <h2 id="dayLogTitle">Day-by-Day Log</h2>
+      <button class="modal-close" onclick="closeModal('dayLogModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="att-summary" style="grid-template-columns:repeat(5,1fr)">
+        <div class="att-stat"><div class="av green" id="dl-present">—</div><div class="al">Present</div></div>
+        <div class="att-stat"><div class="av red" id="dl-absent">—</div><div class="al">Absent</div></div>
+        <div class="att-stat"><div class="av" id="dl-leave" style="color:#7A84FF">—</div><div class="al">On Leave</div></div>
+        <div class="att-stat"><div class="av" id="dl-holiday" style="color:#F0C040">—</div><div class="al">Holidays</div></div>
+        <div class="att-stat"><div class="av orange" id="dl-hours">—</div><div class="al">Total Hours</div></div>
+      </div>
+      <div class="search-row" style="margin:14px 0">
+        <select id="dlStatusFilter" onchange="renderDayLogTable()">
+          <option value="">All Statuses</option>
+          <option value="present">🟢 Present</option>
+          <option value="present-active">🟢 Present (Active)</option>
+          <option value="absent">⚪ Absent</option>
+          <option value="onLeave">🌴 Own Leave</option>
+          <option value="facultyLeave">🧳 Faculty Leave</option>
+          <option value="holiday">🎉 Holiday</option>
+          <option value="notScheduled">➖ Not Scheduled</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="exportDayLogExcel()">📊 Export to Excel</button>
+      </div>
+      <div class="table-wrap" style="max-height:420px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Date</th><th>Day</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Hours</th></tr></thead>
+          <tbody id="dayLogTable"><tr><td colspan="6" style="color:var(--text3);text-align:center;padding:20px">Loading…</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1688,6 +1735,7 @@ async function loadStudents() {
   const snap=await getDocs(collection(db,'cadd_students'));
   allStudents=snap.docs.map(d=>({docId:d.id,...d.data()}));
   filterStudents();
+  populateDayLogPicker();
 }
 
 // ── FACULTY ACCOUNTS (login-capable, separate from old quick-label list) ──
@@ -2699,6 +2747,199 @@ async function deleteHoliday(dateId) {
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 window.deleteHoliday = deleteHoliday;
+
+// ── PER-STUDENT DAY-BY-DAY LOG ──
+// Every day from admission/tracking-start to today, classified as exactly one status.
+// Uses a DEDICATED per-student Firestore query (Bug A fix) — never the shared, capped
+// `allAttendance` array — so a student's full history is always complete regardless of how
+// many records have piled up institute-wide.
+let currentDayLog = [];
+let currentDayLogStudentName = '';
+
+async function computeStudentDayLog(student) {
+  const q = query(collection(db,'cadd_attendance'), where('studentDocId','==', student.docId));
+  const snap = await getDocs(q);
+  const records = snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.checkIn);
+
+  const recByDate = {};
+  records.forEach(r=>{
+    const ds = localDateStr(new Date(r.checkIn.seconds*1000));
+    const existing = recByDate[ds];
+    if (!existing || r.checkIn.seconds > existing.checkIn.seconds) recByDate[ds] = r;
+  });
+
+  const schedDays = Array.isArray(student.attendanceDays) ? student.attendanceDays.map(Number) : [];
+  const leaveRanges = getStudentLeaveRanges(student.docId);
+  const facLeaveRanges = getFacultyLeaveRanges(student.faculty);
+
+  const fromDate = student.trackingStartDate ? new Date(student.trackingStartDate.seconds*1000)
+                  : (student.admissionDate ? new Date(student.admissionDate.seconds*1000) : new Date());
+  fromDate.setHours(0,0,0,0);
+  const toDate = new Date(); toDate.setHours(0,0,0,0);
+
+  const log = [];
+  const cursor = new Date(fromDate);
+  while (cursor <= toDate) {
+    const ds = localDateStr(cursor);
+    const scheduled = !schedDays.length || schedDays.includes(cursor.getDay());
+    const rec = recByDate[ds];
+    let status;
+    if (rec) status = rec.checkOut ? 'present' : 'present-active';
+    else if (isHolidayDate(cursor)) status = 'holiday'; // holiday takes priority over notScheduled/leave/absent
+    else if (!scheduled) status = 'notScheduled';
+    else if (isDateInLeaveRanges(cursor, leaveRanges)) status = 'onLeave';
+    else if (isDateInLeaveRanges(cursor, facLeaveRanges)) status = 'facultyLeave';
+    else status = 'absent';
+    log.push({ date: new Date(cursor), status, record: rec || null });
+    cursor.setDate(cursor.getDate()+1);
+  }
+  return log.reverse(); // most recent first
+}
+
+async function openStudentDayLog(docId) {
+  const s = allStudents.find(x => x.docId === docId);
+  if (!s) { showToast('Student not found', 'error'); return; }
+  currentDayLogStudentName = s.name;
+  document.getElementById('dayLogTitle').textContent = `📅 ${s.name} — Full Day-by-Day Log`;
+  document.getElementById('dayLogModal').style.display = 'flex';
+  document.getElementById('dayLogTable').innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:20px">Loading…</td></tr>';
+  document.getElementById('dlStatusFilter').value = '';
+  currentDayLog = await computeStudentDayLog(s);
+  renderDayLogSummary();
+  renderDayLogTable();
+}
+window.openStudentDayLog = openStudentDayLog;
+
+// Inline onclick="openStudentDayLog(editingStudentId)" would throw — editingStudentId lives
+// in this <script type="module"> scope, and inline handlers run in the page's global scope,
+// not the module's. This wrapper reads it safely inside module scope, then exposes itself.
+function openCurrentStudentDayLog() { openStudentDayLog(editingStudentId); }
+window.openCurrentStudentDayLog = openCurrentStudentDayLog;
+
+function populateDayLogPicker() {
+  const sel = document.getElementById('dlPickerSelect');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = allStudents
+    .slice()
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||''))
+    .map(s => `<option value="${s.docId}" data-search="${(s.name||'').toLowerCase()} ${(s.studentId||'').toLowerCase()}">${s.name} (${s.studentId||'—'})</option>`)
+    .join('');
+  if (prev) sel.value = prev;
+}
+window.populateDayLogPicker = populateDayLogPicker;
+
+// Live-filters the picker <select>'s visible options as the admin types — matches name or ID.
+function filterDayLogPicker() {
+  const term = document.getElementById('dlPickerSearch').value.trim().toLowerCase();
+  const sel = document.getElementById('dlPickerSelect');
+  let firstVisible = null;
+  [...sel.options].forEach(opt => {
+    const match = !term || (opt.dataset.search || '').includes(term);
+    opt.style.display = match ? '' : 'none';
+    if (match && !firstVisible) firstVisible = opt;
+  });
+  if (firstVisible && (!sel.value || sel.options[sel.selectedIndex].style.display === 'none')) {
+    sel.value = firstVisible.value;
+  }
+}
+window.filterDayLogPicker = filterDayLogPicker;
+
+function openStudentDayLogFromPicker() {
+  const sel = document.getElementById('dlPickerSelect');
+  if (!sel.value) { showToast('Pick a student first', 'error'); return; }
+  openStudentDayLog(sel.value);
+}
+window.openStudentDayLogFromPicker = openStudentDayLogFromPicker;
+
+function renderDayLogSummary() {
+  const present = currentDayLog.filter(d => d.status==='present' || d.status==='present-active').length;
+  const absent = currentDayLog.filter(d => d.status==='absent').length;
+  const onLeaveCount = currentDayLog.filter(d => d.status==='onLeave' || d.status==='facultyLeave').length;
+  const holidayCount = currentDayLog.filter(d => d.status==='holiday').length;
+  // Total Hours always reflects the FULL log range, unaffected by the status filter below.
+  let totalHrs = 0;
+  currentDayLog.forEach(d => {
+    if (d.record && d.record.checkIn && d.record.checkOut) {
+      totalHrs += (d.record.checkOut.seconds - d.record.checkIn.seconds) / 3600;
+    }
+  });
+  document.getElementById('dl-present').textContent = present;
+  document.getElementById('dl-absent').textContent = absent;
+  document.getElementById('dl-leave').textContent = onLeaveCount;
+  document.getElementById('dl-holiday').textContent = holidayCount;
+  document.getElementById('dl-hours').textContent = totalHrs.toFixed(1) + 'h';
+}
+
+const DAY_LOG_STATUS_LABEL = {
+  'present': '🟢 Present', 'present-active': '🟢 Present (Active)', 'absent': '⚪ Absent',
+  'onLeave': '🌴 Own Leave', 'facultyLeave': '🧳 Faculty Leave', 'holiday': '🎉 Holiday', 'notScheduled': '➖ Not Scheduled'
+};
+const DAY_LOG_STATUS_COLOR = {
+  'present': 'var(--green)', 'present-active': 'var(--green)', 'absent': 'var(--red)',
+  'onLeave': '#7A84FF', 'facultyLeave': '#F0A030', 'holiday': '#F0C040', 'notScheduled': 'var(--text3)'
+};
+const weekdayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function renderDayLogTable() {
+  const filter = document.getElementById('dlStatusFilter').value;
+  const rows = filter ? currentDayLog.filter(d => d.status === filter) : currentDayLog;
+  const tb = document.getElementById('dayLogTable');
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:20px">No days match this filter.</td></tr>';
+    return;
+  }
+  tb.innerHTML = '';
+  rows.forEach(d => {
+    const rec = d.record;
+    let checkIn = '—', checkOut = '—', hours = '—';
+    if (rec && rec.checkIn) {
+      checkIn = new Date(rec.checkIn.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      if (rec.checkOut) {
+        checkOut = new Date(rec.checkOut.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) + (rec.autoLogout ? ' ⚡' : '');
+        hours = ((rec.checkOut.seconds - rec.checkIn.seconds) / 3600).toFixed(1);
+      } else {
+        checkOut = '<span style="color:var(--green)">Active</span>';
+      }
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="color:var(--text3)">${weekdayNames[d.date.getDay()]}</td>
+      <td><span class="badge" style="background:${DAY_LOG_STATUS_COLOR[d.status]}22;color:${DAY_LOG_STATUS_COLOR[d.status]};border:1px solid ${DAY_LOG_STATUS_COLOR[d.status]}55">${DAY_LOG_STATUS_LABEL[d.status]}</span></td>
+      <td>${checkIn}</td>
+      <td>${checkOut}</td>
+      <td>${hours}</td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+window.renderDayLogTable = renderDayLogTable;
+
+function exportDayLogExcel() {
+  if (typeof XLSX === 'undefined') { showToast('Export library not loaded — check your internet connection', 'error'); return; }
+  const filter = document.getElementById('dlStatusFilter').value;
+  const rows = filter ? currentDayLog.filter(d => d.status === filter) : currentDayLog;
+  if (!rows.length) { showToast('Nothing to export for this filter', 'error'); return; }
+  const data = rows.map(d => {
+    const rec = d.record;
+    return {
+      Date: d.date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),
+      Day: weekdayNames[d.date.getDay()],
+      Status: DAY_LOG_STATUS_LABEL[d.status].replace(/^[^\s]+\s/,''),
+      'Check In': rec && rec.checkIn ? new Date(rec.checkIn.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '',
+      'Check Out': rec && rec.checkOut ? new Date(rec.checkOut.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : (rec ? 'Active' : ''),
+      'Hours': rec && rec.checkIn && rec.checkOut ? ((rec.checkOut.seconds - rec.checkIn.seconds)/3600).toFixed(1) : '',
+      'Auto-Logout': rec && rec.autoLogout ? 'Yes' : 'No'
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Day Log');
+  const safeName = (currentDayLogStudentName || 'Student').replace(/[^a-z0-9]/gi,'_');
+  XLSX.writeFile(wb, `${safeName}_Day_By_Day_Log.xlsx`);
+}
+window.exportDayLogExcel = exportDayLogExcel;
 // Turns one leave-request doc into a {from,to} date range. Prefers the stored dateFrom/dateTo,
 // but falls back to a single day (the day it was requested) for legacy approved requests that
 // predate the dateFrom/dateTo fields — otherwise those silently contribute ZERO excluded days
