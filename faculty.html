@@ -55,6 +55,7 @@
     .tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--border);}
     .tab-btn{background:none;border:none;color:var(--text3);font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;}
     .tab-btn.active{color:var(--orange);border-bottom-color:var(--orange);}
+    .wd-btn.on{background:var(--orange) !important;border-color:var(--orange) !important;color:#fff !important;}
 
     .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
 
@@ -175,6 +176,8 @@
       .approval-actions .btn{flex:1;}
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script>emailjs.init('ZZnMwRWDejsC3uy0h');</script>
 </head>
 <body>
 
@@ -224,6 +227,85 @@
     <button class="tab-btn" id="tab-feedback" onclick="switchFacTab('feedback')">💬 Feedback</button>
     <button class="tab-btn" id="tab-leave" onclick="switchFacTab('leave')">🌴 Leave Requests</button>
     <button class="tab-btn" id="tab-myleave" onclick="switchFacTab('myleave')">🧳 My Leave</button>
+    <button class="tab-btn" id="tab-addstudent" onclick="switchFacTab('addstudent')">➕ Add Student</button>
+  </div>
+
+  <!-- ADD STUDENT TAB — create-only (no edit/delete), same shape as admin's Add Student -->
+  <div id="facTabAddStudent" style="display:none">
+    <div class="card" style="max-width:640px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">
+        Students you add here are created exactly like admin-added students — same login ID/password
+        format, same welcome email — and are automatically assigned to you as their faculty.
+        You can create students but can't edit or delete any student from this panel.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Full Name *</label>
+          <input type="text" id="fns-name" placeholder="Student's full name" oninput="generateFacStudentId()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Phone *</label>
+          <input type="text" id="fns-phone" placeholder="10-digit phone number" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Email *</label>
+        <input type="email" id="fns-email" placeholder="student@example.com" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Stream *</label>
+          <select id="fns-stream" onchange="refreshFacCourseOptions()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;">
+            <option value="">Select Stream</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Course *</label>
+          <select id="fns-course" onchange="handleFacCourseChange()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;">
+            <option value="">Select Course</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Faculty</label>
+          <input type="text" id="fns-facultyDisplay" disabled style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;color:var(--text2);padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Slot *</label>
+          <select id="fns-slot" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"><option value="">Select Slot</option></select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Admission Date</label>
+          <input type="date" id="fns-admDate" onchange="autoFillFacValidityDate()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Course Validity End</label>
+          <input type="date" id="fns-validityDate" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;"/>
+        </div>
+      </div>
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:6px">Attendance Days *</label>
+      <div id="fns-weekdayPicker" style="display:flex;gap:6px;margin-bottom:16px">
+        <button type="button" class="wd-btn" data-day="0" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Sun</button>
+        <button type="button" class="wd-btn" data-day="1" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Mon</button>
+        <button type="button" class="wd-btn" data-day="2" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Tue</button>
+        <button type="button" class="wd-btn" data-day="3" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Wed</button>
+        <button type="button" class="wd-btn" data-day="4" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Thu</button>
+        <button type="button" class="wd-btn" data-day="5" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Fri</button>
+        <button type="button" class="wd-btn" data-day="6" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 0;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;">Sat</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px">
+        <button class="btn btn-ghost btn-sm" onclick="generateFacStudentId()">🔄 Generate Login ID</button>
+        <div style="font-size:12px"><span style="color:var(--text3)">ID:</span> <span id="fnsGenIdDisplay" style="color:var(--orange);font-weight:600">—</span></div>
+        <div style="font-size:12px"><span style="color:var(--text3)">Password:</span> <span id="fnsGenPwDisplay" style="color:var(--orange);font-weight:600">—</span></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" id="fns-sendEmail" checked/> Send welcome email with login details
+      </label>
+      <button class="btn btn-orange" onclick="saveNewStudentFromFaculty()">Create Student</button>
+    </div>
   </div>
 
   <!-- ATTENDANCE LOG TAB (this faculty's own students only) -->
@@ -364,6 +446,228 @@ async function loadFacultyLeaveForStreaks() {
     allFacultyLeave = [];
   }
 }
+// ── EMAILJS CONFIG (for the welcome email fired from Add Student below) ──
+// Same account/service/template as admin.html, so the email is identical either way.
+const EMAILJS_SERVICE = 'service_hx2yzdp';
+const EMAILJS_WELCOME_TEMPLATE = 'template_nhx74dd';
+
+// ── ADD STUDENT (faculty, create-only — see "➕ Add Student" tab) ──
+// Same PROGRAM_CATALOGUE as admin.html, kept in manual sync (module ids must match
+// SYLLABUS_CATALOGUE below, which was already here for the Syllabus display). Faculty can
+// only CREATE a student with this — no edit/delete capability is exposed anywhere in this
+// file, by design (see the portable-feature spec this was built from).
+const PROGRAM_CATALOGUE = {
+  'Fashion': [
+    { id: 'fashion_bdes',      name: 'B.Des in Fashion Designing',              durationMonths: 48 },
+    { id: 'fashion_bsc',       name: 'B.Sc in Fashion Designing',               durationMonths: 36 },
+    { id: 'fashion_adv_dip',   name: 'Advance Diploma in Fashion Designing',    durationMonths: 36 },
+    { id: 'fashion_dip',       name: 'Diploma in Fashion Designing',            durationMonths: 12 },
+    { id: 'fashion_short_dip', name: 'Short Term Diploma in Fashion Designing', durationMonths: 6  },
+    { id: 'fashion_biz_dip',   name: 'Diploma in Fashion Business Management',  durationMonths: 12 },
+    { id: 'fashion_vm',        name: 'Visual Merchandising',                    durationMonths: 6  },
+    { id: 'fashion_styling',   name: 'Fashion Styling',                         durationMonths: 3  },
+    { id: 'fashion_msc',       name: 'M.Sc in Fashion',                         durationMonths: 24 },
+    { id: 'fashion_mdes',      name: 'M.Des in Fashion',                        durationMonths: 24 },
+    { id: 'fashion_bvoc',      name: 'B.Voc in Fashion Design',                 durationMonths: 36 }
+  ],
+  'Interiors': [
+    { id: 'interior_bdes',      name: 'B.Des in Interior Designing',           durationMonths: 48 },
+    { id: 'interior_bsc',       name: 'B.Sc in Interior Designing',            durationMonths: 36 },
+    { id: 'interior_adv_dip',   name: 'Advance Diploma in Interior Designing', durationMonths: 36 },
+    { id: 'interior_dip',       name: 'Diploma in Interior Designing',         durationMonths: 12 },
+    { id: 'interior_short_dip', name: 'Short Term in Interior Designing',      durationMonths: 6  }
+  ]
+};
+function findProgramByName(name) {
+  for (const stream in PROGRAM_CATALOGUE) {
+    const p = PROGRAM_CATALOGUE[stream].find(x => x.name === name);
+    if (p) return { ...p, stream };
+  }
+  return null;
+}
+
+let facSlots = [];
+const fac_selectedDays = new Set();
+
+// Loaded once at login (see loadDashboard) — NOT re-rendered on every tab switch, so
+// switching away from and back to this tab never wipes an in-progress selection.
+async function loadFacConfigForAddStudent() {
+  try {
+    const sd = await getDoc(doc(db, 'cadd_config', 'slots'));
+    facSlots = sd.exists() ? (sd.data().list || []) : [];
+  } catch(e) { facSlots = []; }
+  const streamSel = document.getElementById('fns-stream');
+  if (streamSel) {
+    streamSel.innerHTML = '<option value="">Select Stream</option>' +
+      Object.keys(PROGRAM_CATALOGUE).map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+  const slotSel = document.getElementById('fns-slot');
+  if (slotSel) {
+    slotSel.innerHTML = '<option value="">Select Slot</option>' + facSlots.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+  const facDisplay = document.getElementById('fns-facultyDisplay');
+  if (facDisplay && currentFaculty) facDisplay.value = currentFaculty.name + ' (you)';
+  renderFacWeekdayPicker();
+}
+
+function refreshFacCourseOptions() {
+  const stream = document.getElementById('fns-stream').value;
+  const courseSel = document.getElementById('fns-course');
+  const list = stream ? PROGRAM_CATALOGUE[stream] : [];
+  courseSel.innerHTML = '<option value="">Select Course</option>' + list.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+}
+window.refreshFacCourseOptions = refreshFacCourseOptions;
+
+function handleFacCourseChange() {
+  autoFillFacValidityDate();
+}
+window.handleFacCourseChange = handleFacCourseChange;
+
+function autoFillFacValidityDate() {
+  const admVal = document.getElementById('fns-admDate').value;
+  const courseVal = document.getElementById('fns-course').value;
+  const validityField = document.getElementById('fns-validityDate');
+  if (validityField.value) return; // never overwrite a value already typed in manually
+  const program = findProgramByName(courseVal);
+  if (!admVal || !program) return;
+  const d = new Date(admVal);
+  d.setMonth(d.getMonth() + program.durationMonths);
+  validityField.value = d.toISOString().slice(0, 10);
+}
+window.autoFillFacValidityDate = autoFillFacValidityDate;
+
+function renderFacWeekdayPicker() {
+  const container = document.getElementById('fns-weekdayPicker');
+  if (!container) return;
+  container.querySelectorAll('.wd-btn').forEach(btn => {
+    const day = parseInt(btn.dataset.day);
+    btn.classList.toggle('on', fac_selectedDays.has(day));
+    btn.onclick = () => {
+      if (fac_selectedDays.has(day)) fac_selectedDays.delete(day);
+      else fac_selectedDays.add(day);
+      btn.classList.toggle('on');
+    };
+  });
+}
+
+// Same ID/password generation logic as admin.html's generateId(), so credentials look and
+// behave identically regardless of who created the account.
+function generateFacStudentId() {
+  const name = document.getElementById('fns-name').value.trim();
+  if (!name) {
+    document.getElementById('fnsGenIdDisplay').textContent = '—';
+    document.getElementById('fnsGenPwDisplay').textContent = '—';
+    return;
+  }
+  const first = name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+  const num = Math.floor(100 + Math.random() * 900);
+  const sid = first + '@' + num;
+  const pw = first.charAt(0).toUpperCase() + first.slice(1) + '@' + num;
+  document.getElementById('fnsGenIdDisplay').textContent = sid;
+  document.getElementById('fnsGenPwDisplay').textContent = pw;
+}
+window.generateFacStudentId = generateFacStudentId;
+
+// Same welcome-email trigger as admin.html's sendWelcomeEmail() — same service/template IDs,
+// so the student gets an identical email regardless of who created their account.
+async function sendFacWelcomeEmail(studentData) {
+  if (!studentData.email) return;
+  try {
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_WELCOME_TEMPLATE, {
+      to_email: studentData.email,
+      student_name: studentData.name,
+      student_id: studentData.studentId,
+      student_password: studentData.password,
+      student_course: studentData.course || '—',
+      login_url: 'https://arenaanimationvashi.github.io/jdinstituteoffashion-technologyvashi/'
+    });
+    showToast('Student created and welcome email sent to ' + studentData.email, 'success');
+  } catch(e) {
+    showToast('Student created, but email failed: ' + (e.text || e.message || 'Unknown error'), 'error');
+    console.error('EmailJS error:', e);
+  }
+}
+
+async function saveNewStudentFromFaculty() {
+  const name = document.getElementById('fns-name').value.trim();
+  const phone = document.getElementById('fns-phone').value.trim();
+  const email = document.getElementById('fns-email').value.trim();
+  const course = document.getElementById('fns-course').value;
+  const slot = document.getElementById('fns-slot').value;
+  const admDateVal = document.getElementById('fns-admDate').value;
+  const validityDateVal = document.getElementById('fns-validityDate').value;
+  const studentId = document.getElementById('fnsGenIdDisplay').textContent;
+  const password = document.getElementById('fnsGenPwDisplay').textContent;
+  const attendanceDays = Array.from(fac_selectedDays).sort();
+
+  if (!name || !phone || !email || !course || studentId === '—') {
+    showToast('Fill all required fields and generate a login ID', 'error'); return;
+  }
+  if (attendanceDays.length === 0) {
+    showToast('Select at least one attendance day', 'error'); return;
+  }
+  if (!slot) { showToast('Select a slot', 'error'); return; }
+
+  const program = findProgramByName(course);
+  if (!program) { showToast('Course not recognized', 'error'); return; }
+
+  try {
+    // Exactly one module per program in this system (see MODULE_CATALOGUE in admin.html) —
+    // no module-picker UI needed here, it's auto-built from the chosen course and
+    // auto-assigned to the CURRENT faculty (no dropdown to pick someone else — see spec).
+    const syllabusSessions = SYLLABUS_CATALOGUE[program.id] ? SYLLABUS_CATALOGUE[program.id].sessions : [{ num: 1, title: 'Introduction', topics: '' }];
+    const totalSessions = syllabusSessions.length;
+    const sessions = {};
+    for (let n = 1; n <= totalSessions; n++) {
+      sessions[n] = { studentTicked: false, tickedAt: null, approved: false, approvedBy: null, approvedAt: null, autoTicked: false, practiceCount: 0, lastPracticedAt: null };
+    }
+    const modules = {
+      [program.id]: {
+        name: program.name + ' — Introduction',
+        category: program.stream,
+        weeks: Math.max(4, Math.round(program.durationMonths * 4.345)),
+        totalSessions,
+        facultyAssignments: [{ facultyId: currentFaculty.docId, facultyName: currentFaculty.name, fromSession: 1, toSession: totalSessions }],
+        sessions
+      }
+    };
+
+    const data = {
+      name, phone, email, course, faculty: currentFaculty.name, slot, studentId, password,
+      modules, attendanceDays,
+      status: 'active',
+      admissionDate: admDateVal ? Timestamp.fromDate(new Date(admDateVal)) : Timestamp.now(),
+      trackingStartDate: Timestamp.now(),
+      validityEndDate: validityDateVal ? Timestamp.fromDate(new Date(validityDateVal)) : null,
+      createdAt: Timestamp.now(),
+      // Audit trail — lets admin always tell whether a student was added by admin or by
+      // which faculty member. Nothing else reads this field yet; purely informational.
+      createdBy: currentFaculty.name,
+      createdByRole: 'faculty'
+    };
+    const newDocRef = await addDoc(collection(db, 'cadd_students'), data);
+    showToast('Student created! ID: ' + studentId, 'success');
+
+    const shouldEmail = document.getElementById('fns-sendEmail').checked;
+    if (shouldEmail) await sendFacWelcomeEmail({ docId: newDocRef.id, ...data });
+
+    resetFacAddStudentForm();
+    await loadDashboard(); // refreshes myStudents/stats immediately — no manual reload needed
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.saveNewStudentFromFaculty = saveNewStudentFromFaculty;
+
+function resetFacAddStudentForm() {
+  ['fns-name','fns-phone','fns-email','fns-admDate','fns-validityDate'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fns-stream').value = '';
+  document.getElementById('fns-course').innerHTML = '<option value="">Select Course</option>';
+  document.getElementById('fns-slot').value = '';
+  document.getElementById('fnsGenIdDisplay').textContent = '—';
+  document.getElementById('fnsGenPwDisplay').textContent = '—';
+  fac_selectedDays.clear();
+  renderFacWeekdayPicker();
+}
+
 function getFacultyLeaveRanges(facultyDocId) {
   if (!facultyDocId) return [];
   return allFacultyLeave
@@ -537,6 +841,9 @@ async function checkFacultyGate() {
     document.getElementById('mainContent').style.display = 'block';
     document.getElementById('facultyNameDisplay').textContent = currentFaculty.name;
 
+    // Once at login only — NOT inside loadDashboard(), which re-runs after every approval/
+    // leave action and would otherwise wipe any in-progress Add Student selections.
+    await loadFacConfigForAddStudent();
     await loadDashboard();
   } catch(e) {
     errBox.textContent = 'Error: ' + e.message;
@@ -724,6 +1031,7 @@ function switchFacTab(tab) {
   document.getElementById('facTabFeedback').style.display = tab === 'feedback' ? 'block' : 'none';
   document.getElementById('facTabLeave').style.display = tab === 'leave' ? 'block' : 'none';
   document.getElementById('facTabMyLeave').style.display = tab === 'myleave' ? 'block' : 'none';
+  document.getElementById('facTabAddStudent').style.display = tab === 'addstudent' ? 'block' : 'none';
   document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
   document.getElementById('tab-students').classList.toggle('active', tab === 'students');
   document.getElementById('tab-live').classList.toggle('active', tab === 'live');
@@ -731,12 +1039,14 @@ function switchFacTab(tab) {
   document.getElementById('tab-feedback').classList.toggle('active', tab === 'feedback');
   document.getElementById('tab-leave').classList.toggle('active', tab === 'leave');
   document.getElementById('tab-myleave').classList.toggle('active', tab === 'myleave');
+  document.getElementById('tab-addstudent').classList.toggle('active', tab === 'addstudent');
   if (tab === 'live') loadLiveSlots();
   if (tab === 'attlog') loadFacAttendance();
   if (tab === 'feedback') loadFacFeedback();
   if (tab === 'leave') loadFacLeaveRequests();
   if (tab === 'myleave') loadMyLeaveRequests();
 }
+window.switchFacTab = switchFacTab;
 
 // ── ATTENDANCE LOG (faculty's own students only) ──
 // Single field orderBy+limit query (no where clause, no composite index needed),
@@ -1187,7 +1497,62 @@ const SYLLABUS_CATALOGUE = {
     { num: 64, semester: 8, semesterName: 'Semester VIII', title: 'Elective-Based Industrial Internship', topics: 'Choose an area of specialization to intern in, based on career goals.' },
     { num: 65, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'Culmination of your journey through a final collection presented to industry experts.' }
   ] },
-  fashion_bsc:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
+  fashion_bsc: { sessions: [
+    { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Foundation Art', topics: 'Learn the basics of drawing, shading, composition, and color theory—crucial for building visual sensibility and creative expression.' },
+      { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Technical Drawing', topics: 'Develop precise, scaled technical sketches of garments to communicate design and construction details clearly.' },
+      { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration – I', topics: 'Introduction to sketching fashion figures and garment designs for women\u2019s wear with emphasis on proportion and styling.' },
+      { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: 'Understand the fundamentals of fashion as an industry, its evolution, consumer behavior, and the meaning behind fashion choices.' },
+      { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Textiles', topics: 'Study fabric types, fiber properties, weaves, and finishes to understand how fabric choice impacts design and functionality.' },
+      { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Fashion History – I', topics: 'Explore ancient and medieval costume history to understand the origin of design influences.' },
+      { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Computer Applications (MS Office + Canva)', topics: 'Gain digital literacy for documentation, presentations, and basic design tools to organize and present your ideas effectively.' },
+      { num: 8,  semester: 1, semesterName: 'Semester I', title: 'Pattern Making – I (Basics)', topics: 'Learn the principles of pattern drafting using body measurements to create basic garment patterns.' },
+      { num: 9,  semester: 1, semesterName: 'Semester I', title: 'Basics of Sewing (60 Samples)', topics: 'Practice stitching over 60 sample techniques to master construction fundamentals like seams, darts, plackets, etc.' },
+      { num: 10, semester: 1, semesterName: 'Semester I', title: 'Communication and Soft Skills', topics: 'Improve interpersonal communication, presentation skills, and confidence essential for personal and professional success.' },
+      // Semester II
+      { num: 11, semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration – II', topics: 'Advance to more dynamic poses, stylization, fabric rendering, and fashion croquis development.' },
+      { num: 12, semester: 2, semesterName: 'Semester II', title: 'Fabric Studies – I', topics: 'Deeper study of fabric properties, finishes, identification techniques, and textile testing.' },
+      { num: 13, semester: 2, semesterName: 'Semester II', title: 'Fashion History – II', topics: 'Continue learning through Renaissance and Victorian fashion history and its influence on contemporary trends.' },
+      { num: 14, semester: 2, semesterName: 'Semester II', title: 'Computer-Aided Design I (Adobe Illustrator)', topics: 'Use Adobe Illustrator for flat sketches, digital croquis, and print development.' },
+      { num: 15, semester: 2, semesterName: 'Semester II', title: 'Pattern Making – II', topics: 'Learn more complex patterns and adapt them to fit different body types and design styles.' },
+      { num: 16, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology I (8 Garments)', topics: 'Apply your pattern and sewing skills to create complete garments, learning about cutting, assembling, and finishing.' },
+      { num: 17, semester: 2, semesterName: 'Semester II', title: 'Draping – I', topics: 'Introduction to fabric draping directly on a dress form to understand 3D garment construction techniques.' },
+      { num: 18, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Prepare your first official showcase as part of JD\u2019s internal fashion event to demonstrate your semester learnings.' },
+      // Semester III
+      { num: 19, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration III (Male)', topics: 'Learn to draw male croquis and garments with appropriate anatomy, styling, and textures.' },
+      { num: 20, semester: 3, semesterName: 'Semester III', title: 'Fabric Studies II', topics: 'Explore specialty fabrics, blends, and high-performance textiles with an emphasis on usage and suitability.' },
+      { num: 21, semester: 3, semesterName: 'Semester III', title: 'Fashion History III', topics: 'Explore 20th-century fashion evolution and major fashion revolutions through the decades.' },
+      { num: 22, semester: 3, semesterName: 'Semester III', title: 'Traditional Indian Textiles & Motif Development', topics: 'Study Indian textile crafts like Bandhani, Ikat, and Kalamkari while learning to create motifs inspired by traditional art.' },
+      { num: 23, semester: 3, semesterName: 'Semester III', title: 'World Art Appreciation', topics: 'Understand global art movements and their influence on fashion and aesthetic sensibilities.' },
+      { num: 24, semester: 3, semesterName: 'Semester III', title: 'Computer-Aided Design II (Photoshop & InDesign)', topics: 'Advance your digital skills with Adobe Photoshop for image manipulation and InDesign for layout compositions.' },
+      { num: 25, semester: 3, semesterName: 'Semester III', title: 'Pattern Making III (Men\u2019s Wear)', topics: 'Draft and construct patterns specific to men\'s apparel including shirts, trousers, and jackets.' },
+      { num: 26, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology II (8 Garments)', topics: 'Build a new set of garments with advanced sewing, quality control, and finishing techniques.' },
+      { num: 27, semester: 3, semesterName: 'Semester III', title: 'Draping II', topics: 'Explore more complex draping styles for different fabric types and structured silhouettes.' },
+      // Semester IV
+      { num: 28, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration IV (Kids)', topics: 'Focus on proportions and design techniques for children\'s clothing and fashion graphics.' },
+      { num: 29, semester: 4, semesterName: 'Semester IV', title: 'Fashion History IV', topics: 'Learn contemporary fashion history from 1950s to modern-day designers, fashion movements, and innovations.' },
+      { num: 30, semester: 4, semesterName: 'Semester IV', title: 'Computer-Aided Design III (Basics of CLO 3D)', topics: 'Introduction to 3D garment visualization and virtual sampling using CLO 3D software.' },
+      { num: 31, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making IV (Female & Kids)', topics: 'Advanced construction techniques for women\u2019s and kidswear, including styling variations and fit analysis.' },
+      { num: 32, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing Technology III (9 Garments)', topics: 'Final year production-level garments integrating all previous technical knowledge.' },
+      { num: 33, semester: 4, semesterName: 'Semester IV', title: 'Accessory Design', topics: 'Learn to conceptualize and create accessories like bags, belts, and fashion jewelry to complement garments.' },
+      { num: 34, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Showcase your creative outcomes in a competitive setting judged by industry professionals.' },
+      // Semester V
+      { num: 35, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: 'Design a cohesive mini collection or fashion line using market research, trend forecasting, and conceptual thinking.' },
+      { num: 36, semester: 5, semesterName: 'Semester V', title: 'CAD IV (Advanced CLO 3D)', topics: 'Deepen your CLO 3D skills to simulate and test garments virtually before physical production.' },
+      { num: 37, semester: 5, semesterName: 'Semester V', title: 'Pattern Making (Knitwear)', topics: 'Focus on patterns specifically for stretch fabrics like knits used in casual and sportswear.' },
+      { num: 38, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing (7 Garments)', topics: 'Translate knit patterns into finished garments with industrial finishing and quality control techniques.' },
+      { num: 39, semester: 5, semesterName: 'Semester V', title: 'Draping (Woven & Knit Fabrics)', topics: 'Learn the challenges and differences in draping structured woven fabrics versus flexible knits.' },
+      { num: 40, semester: 5, semesterName: 'Semester V', title: 'Fashion Branding & E-Commerce', topics: 'Learn the essentials of building a fashion brand, its digital presence, and how to sell online.' },
+      { num: 41, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting', topics: 'Study consumer behavior, historical cycles, and global influences to predict future fashion trends.' },
+      { num: 42, semester: 5, semesterName: 'Semester V', title: 'Craft Documentation (Project)', topics: 'Undertake a research-based project documenting traditional craft practices, artisanship, and sustainability.' },
+      { num: 43, semester: 5, semesterName: 'Semester V', title: 'Industrial Internship', topics: 'Apply classroom knowledge in a real industry setting, gaining hands-on experience and professional networking.' },
+      // Semester VI
+      { num: 44, semester: 6, semesterName: 'Semester VI', title: 'Portfolio Development', topics: 'Create a professional portfolio showcasing your designs, technical work, illustrations, and projects—crucial for job placements and higher studies.' },
+      { num: 45, semester: 6, semesterName: 'Semester VI', title: 'Fashion Merchandising & Marketing', topics: 'Learn how to present, promote, and sell your designs through strategic planning and market awareness.' },
+      { num: 46, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: 'Understand international fashion business, export processes, and global consumer trends.' },
+      { num: 47, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: 'Develop business acumen through modules in finance, production planning, costing, and retail management.' },
+      { num: 48, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: 'Study quality assurance standards, testing methods, and how to maintain consistency in garment production.' },
+      { num: 49, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Culmination of your three-year journey—present your final collection or capstone project at a professional-level fashion show.' }
+  ] },
   fashion_adv_dip:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_dip:       { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_short_dip: { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
@@ -1196,6 +1561,44 @@ const SYLLABUS_CATALOGUE = {
   fashion_styling:   { sessions: [{ num: 1, title: 'Introduction', topics: '' }] },
   fashion_msc:  { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
   fashion_mdes: { sessions: [1,2,3,4].map(sem => ({ num: sem, semester: sem, semesterName: 'Semester ' + ['','I','II','III','IV'][sem], title: 'Introduction', topics: '' })) },
+  fashion_bvoc: { sessions: [
+    { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration -1', topics: '' },
+    { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: '' },
+    { num: 3,  semester: 1, semesterName: 'Semester I', title: 'History of Costumes-1', topics: '' },
+    { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Introduction to Pattern making & Draping', topics: '' },
+    { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Garment Manufacturing Technology-1', topics: '' },
+    { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Computer Application - Softwares', topics: '' },
+    { num: 7,  semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration-2', topics: '' },
+    { num: 8,  semester: 2, semesterName: 'Semester II', title: 'History of Costumes-2', topics: '' },
+    { num: 9,  semester: 2, semesterName: 'Semester II', title: 'Textiles-1', topics: '' },
+    { num: 10, semester: 2, semesterName: 'Semester II', title: 'Draping-1', topics: '' },
+    { num: 11, semester: 2, semesterName: 'Semester II', title: 'Pattern Making Technology-1', topics: '' },
+    { num: 12, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology-2', topics: '' },
+    { num: 13, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: '' },
+    { num: 14, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration-3', topics: '' },
+    { num: 15, semester: 3, semesterName: 'Semester III', title: 'Digital Fashion Illustration', topics: '' },
+    { num: 16, semester: 3, semesterName: 'Semester III', title: 'Textiles-2', topics: '' },
+    { num: 17, semester: 3, semesterName: 'Semester III', title: 'Draping-2', topics: '' },
+    { num: 18, semester: 3, semesterName: 'Semester III', title: 'Pattern Making Technology-2', topics: '' },
+    { num: 19, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology-3', topics: '' },
+    { num: 20, semester: 3, semesterName: 'Semester III', title: 'Motif and Print Development', topics: '' },
+    { num: 21, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration-4', topics: '' },
+    { num: 22, semester: 4, semesterName: 'Semester IV', title: 'Traditional Indian Textiles', topics: '' },
+    { num: 23, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making Technology-3', topics: '' },
+    { num: 24, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing-4', topics: '' },
+    { num: 25, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: '' },
+    { num: 26, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing-5', topics: '' },
+    { num: 27, semester: 5, semesterName: 'Semester V', title: 'Pattern Making Technology 4', topics: '' },
+    { num: 28, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: '' },
+    { num: 29, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting & Branding', topics: '' },
+    { num: 30, semester: 5, semesterName: 'Semester V', title: 'Fashion Merchandising & Marketing', topics: '' },
+    { num: 31, semester: 5, semesterName: 'Semester V', title: 'Surface Ornamentation', topics: '' },
+    { num: 32, semester: 6, semesterName: 'Semester VI', title: 'Internship', topics: '' },
+    { num: 33, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: '' },
+    { num: 34, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: '' },
+    { num: 35, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: '' },
+    { num: 36, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: '' }
+  ] },
   interior_bdes: { sessions: [
     // Semester I
     { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Interior Design (Basics)', topics: 'Students are introduced to the fundamental principles of interior design, including space planning, design elements, and composition techniques. It helps lay a strong creative foundation.' },
