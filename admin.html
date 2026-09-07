@@ -508,7 +508,10 @@
     <div class="page" id="page-leaveRequests">
       <div class="page-header">
         <h1>🌴 Leave Requests</h1>
-        <button class="btn btn-orange" onclick="toggleAdminStudentLeaveForm()">+ Add Student Leave</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="sweepStuckOnLeaveStudents()" title="One-time fix for any student whose leave already ended but is still stuck showing 'On Leave' — normally this self-heals the next time each student opens their app, this just fixes everyone immediately">🔧 Fix Stuck "On Leave" Students</button>
+          <button class="btn btn-orange" onclick="toggleAdminStudentLeaveForm()">+ Add Student Leave</button>
+        </div>
       </div>
       <p style="color:var(--text3);font-size:12px;margin-bottom:14px">
         Leave added here (or approved from a student's own request) is saved with dates, so the student can end it
@@ -1076,7 +1079,8 @@ const PROGRAM_CATALOGUE = {
     // NOTE: duration assumed as 24 months (4 semesters) — standard Indian M.Sc/M.Des length.
     // Real duration/semester count not yet confirmed — adjust durationMonths below if different.
     { id: 'fashion_msc',       name: 'M.Sc in Fashion',                         durationMonths: 24 },
-    { id: 'fashion_mdes',      name: 'M.Des in Fashion',                        durationMonths: 24 }
+    { id: 'fashion_mdes',      name: 'M.Des in Fashion',                        durationMonths: 24 },
+    { id: 'fashion_bvoc',      name: 'B.Voc in Fashion Design',                 durationMonths: 36 }
   ],
   'Interiors': [
     { id: 'interior_bdes',      name: 'B.Des in Interior Designing',           durationMonths: 48 },
@@ -1299,6 +1303,116 @@ SYLLABUS_CATALOGUE['interior_bdes'] = { sessions: [
   { num: 43, semester: 8, semesterName: 'Semester VIII', title: 'Project Management', topics: 'Students gain insights into handling large-scale interior projects — budgeting, scheduling, procurement, manpower coordination, and vendor management.' },
   { num: 44, semester: 8, semesterName: 'Semester VIII', title: 'Set Design', topics: 'Introduces students to the world of film, theatre, and event set design — building temporary spaces that tell stories visually while considering materials, lighting, and layout.' },
   { num: 45, semester: 8, semesterName: 'Semester VIII', title: 'JD Design Awards', topics: 'The grand culmination of the course — students present their final design projects in front of an esteemed panel of industry experts and peers.' }
+]};
+
+// ── REAL SYLLABUS: B.Voc in Fashion Design (6 semesters) ──
+// Injected from JD's official course PDF. Same pattern as fashion_bdes/interior_bdes above.
+SYLLABUS_CATALOGUE['fashion_bvoc'] = { sessions: [
+  // Semester I
+  { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration -1', topics: '' },
+  { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: '' },
+  { num: 3,  semester: 1, semesterName: 'Semester I', title: 'History of Costumes-1', topics: '' },
+  { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Introduction to Pattern making & Draping', topics: '' },
+  { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Garment Manufacturing Technology-1', topics: '' },
+  { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Computer Application - Softwares', topics: '' },
+  // Semester II
+  { num: 7,  semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration-2', topics: '' },
+  { num: 8,  semester: 2, semesterName: 'Semester II', title: 'History of Costumes-2', topics: '' },
+  { num: 9,  semester: 2, semesterName: 'Semester II', title: 'Textiles-1', topics: '' },
+  { num: 10, semester: 2, semesterName: 'Semester II', title: 'Draping-1', topics: '' },
+  { num: 11, semester: 2, semesterName: 'Semester II', title: 'Pattern Making Technology-1', topics: '' },
+  { num: 12, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology-2', topics: '' },
+  { num: 13, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: '' },
+  // Semester III
+  { num: 14, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration-3', topics: '' },
+  { num: 15, semester: 3, semesterName: 'Semester III', title: 'Digital Fashion Illustration', topics: '' },
+  { num: 16, semester: 3, semesterName: 'Semester III', title: 'Textiles-2', topics: '' },
+  { num: 17, semester: 3, semesterName: 'Semester III', title: 'Draping-2', topics: '' },
+  { num: 18, semester: 3, semesterName: 'Semester III', title: 'Pattern Making Technology-2', topics: '' },
+  { num: 19, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology-3', topics: '' },
+  { num: 20, semester: 3, semesterName: 'Semester III', title: 'Motif and Print Development', topics: '' },
+  // Semester IV
+  { num: 21, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration-4', topics: '' },
+  { num: 22, semester: 4, semesterName: 'Semester IV', title: 'Traditional Indian Textiles', topics: '' },
+  { num: 23, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making Technology-3', topics: '' },
+  { num: 24, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing-4', topics: '' },
+  { num: 25, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: '' },
+  // Semester V
+  { num: 26, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing-5', topics: '' },
+  { num: 27, semester: 5, semesterName: 'Semester V', title: 'Pattern Making Technology 4', topics: '' },
+  { num: 28, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: '' },
+  { num: 29, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting & Branding', topics: '' },
+  { num: 30, semester: 5, semesterName: 'Semester V', title: 'Fashion Merchandising & Marketing', topics: '' },
+  { num: 31, semester: 5, semesterName: 'Semester V', title: 'Surface Ornamentation', topics: '' },
+  // Semester VI
+  { num: 32, semester: 6, semesterName: 'Semester VI', title: 'Internship', topics: '' },
+  { num: 33, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: '' },
+  { num: 34, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: '' },
+  { num: 35, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: '' },
+  { num: 36, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: '' }
+]};
+
+// ── REAL SYLLABUS: B.Sc in Fashion Design (6 semesters) ──
+// Injected from JD's official course PDF. Curriculum text for Semesters I-VI is verbatim
+// identical to fashion_bdes's first 6 semesters (same subjects, same descriptions) — B.Sc is
+// the 3-year/6-semester version of the same program B.Des extends to 4 years/8 semesters.
+// Renumbered 1-49 independently (own sequential run, not shared with fashion_bdes's numbering).
+SYLLABUS_CATALOGUE['fashion_bsc'] = { sessions: [
+  // Semester I
+  { num: 1,  semester: 1, semesterName: 'Semester I', title: 'Foundation Art', topics: 'Learn the basics of drawing, shading, composition, and color theory—crucial for building visual sensibility and creative expression.' },
+  { num: 2,  semester: 1, semesterName: 'Semester I', title: 'Technical Drawing', topics: 'Develop precise, scaled technical sketches of garments to communicate design and construction details clearly.' },
+  { num: 3,  semester: 1, semesterName: 'Semester I', title: 'Fashion Illustration – I', topics: 'Introduction to sketching fashion figures and garment designs for women\u2019s wear with emphasis on proportion and styling.' },
+  { num: 4,  semester: 1, semesterName: 'Semester I', title: 'Fashion Theory', topics: 'Understand the fundamentals of fashion as an industry, its evolution, consumer behavior, and the meaning behind fashion choices.' },
+  { num: 5,  semester: 1, semesterName: 'Semester I', title: 'Textiles', topics: 'Study fabric types, fiber properties, weaves, and finishes to understand how fabric choice impacts design and functionality.' },
+  { num: 6,  semester: 1, semesterName: 'Semester I', title: 'Fashion History – I', topics: 'Explore ancient and medieval costume history to understand the origin of design influences.' },
+  { num: 7,  semester: 1, semesterName: 'Semester I', title: 'Computer Applications (MS Office + Canva)', topics: 'Gain digital literacy for documentation, presentations, and basic design tools to organize and present your ideas effectively.' },
+  { num: 8,  semester: 1, semesterName: 'Semester I', title: 'Pattern Making – I (Basics)', topics: 'Learn the principles of pattern drafting using body measurements to create basic garment patterns.' },
+  { num: 9,  semester: 1, semesterName: 'Semester I', title: 'Basics of Sewing (60 Samples)', topics: 'Practice stitching over 60 sample techniques to master construction fundamentals like seams, darts, plackets, etc.' },
+  { num: 10, semester: 1, semesterName: 'Semester I', title: 'Communication and Soft Skills', topics: 'Improve interpersonal communication, presentation skills, and confidence essential for personal and professional success.' },
+  // Semester II
+  { num: 11, semester: 2, semesterName: 'Semester II', title: 'Fashion Illustration – II', topics: 'Advance to more dynamic poses, stylization, fabric rendering, and fashion croquis development.' },
+  { num: 12, semester: 2, semesterName: 'Semester II', title: 'Fabric Studies – I', topics: 'Deeper study of fabric properties, finishes, identification techniques, and textile testing.' },
+  { num: 13, semester: 2, semesterName: 'Semester II', title: 'Fashion History – II', topics: 'Continue learning through Renaissance and Victorian fashion history and its influence on contemporary trends.' },
+  { num: 14, semester: 2, semesterName: 'Semester II', title: 'Computer-Aided Design I (Adobe Illustrator)', topics: 'Use Adobe Illustrator for flat sketches, digital croquis, and print development.' },
+  { num: 15, semester: 2, semesterName: 'Semester II', title: 'Pattern Making – II', topics: 'Learn more complex patterns and adapt them to fit different body types and design styles.' },
+  { num: 16, semester: 2, semesterName: 'Semester II', title: 'Garment Manufacturing Technology I (8 Garments)', topics: 'Apply your pattern and sewing skills to create complete garments, learning about cutting, assembling, and finishing.' },
+  { num: 17, semester: 2, semesterName: 'Semester II', title: 'Draping – I', topics: 'Introduction to fabric draping directly on a dress form to understand 3D garment construction techniques.' },
+  { num: 18, semester: 2, semesterName: 'Semester II', title: 'JD Design Awards', topics: 'Prepare your first official showcase as part of JD\u2019s internal fashion event to demonstrate your semester learnings.' },
+  // Semester III
+  { num: 19, semester: 3, semesterName: 'Semester III', title: 'Fashion Illustration III (Male)', topics: 'Learn to draw male croquis and garments with appropriate anatomy, styling, and textures.' },
+  { num: 20, semester: 3, semesterName: 'Semester III', title: 'Fabric Studies II', topics: 'Explore specialty fabrics, blends, and high-performance textiles with an emphasis on usage and suitability.' },
+  { num: 21, semester: 3, semesterName: 'Semester III', title: 'Fashion History III', topics: 'Explore 20th-century fashion evolution and major fashion revolutions through the decades.' },
+  { num: 22, semester: 3, semesterName: 'Semester III', title: 'Traditional Indian Textiles & Motif Development', topics: 'Study Indian textile crafts like Bandhani, Ikat, and Kalamkari while learning to create motifs inspired by traditional art.' },
+  { num: 23, semester: 3, semesterName: 'Semester III', title: 'World Art Appreciation', topics: 'Understand global art movements and their influence on fashion and aesthetic sensibilities.' },
+  { num: 24, semester: 3, semesterName: 'Semester III', title: 'Computer-Aided Design II (Photoshop & InDesign)', topics: 'Advance your digital skills with Adobe Photoshop for image manipulation and InDesign for layout compositions.' },
+  { num: 25, semester: 3, semesterName: 'Semester III', title: 'Pattern Making III (Men\u2019s Wear)', topics: 'Draft and construct patterns specific to men\'s apparel including shirts, trousers, and jackets.' },
+  { num: 26, semester: 3, semesterName: 'Semester III', title: 'Garment Manufacturing Technology II (8 Garments)', topics: 'Build a new set of garments with advanced sewing, quality control, and finishing techniques.' },
+  { num: 27, semester: 3, semesterName: 'Semester III', title: 'Draping II', topics: 'Explore more complex draping styles for different fabric types and structured silhouettes.' },
+  // Semester IV
+  { num: 28, semester: 4, semesterName: 'Semester IV', title: 'Fashion Illustration IV (Kids)', topics: 'Focus on proportions and design techniques for children\'s clothing and fashion graphics.' },
+  { num: 29, semester: 4, semesterName: 'Semester IV', title: 'Fashion History IV', topics: 'Learn contemporary fashion history from 1950s to modern-day designers, fashion movements, and innovations.' },
+  { num: 30, semester: 4, semesterName: 'Semester IV', title: 'Computer-Aided Design III (Basics of CLO 3D)', topics: 'Introduction to 3D garment visualization and virtual sampling using CLO 3D software.' },
+  { num: 31, semester: 4, semesterName: 'Semester IV', title: 'Pattern Making IV (Female & Kids)', topics: 'Advanced construction techniques for women\u2019s and kidswear, including styling variations and fit analysis.' },
+  { num: 32, semester: 4, semesterName: 'Semester IV', title: 'Garment Manufacturing Technology III (9 Garments)', topics: 'Final year production-level garments integrating all previous technical knowledge.' },
+  { num: 33, semester: 4, semesterName: 'Semester IV', title: 'Accessory Design', topics: 'Learn to conceptualize and create accessories like bags, belts, and fashion jewelry to complement garments.' },
+  { num: 34, semester: 4, semesterName: 'Semester IV', title: 'JD Design Awards', topics: 'Showcase your creative outcomes in a competitive setting judged by industry professionals.' },
+  // Semester V
+  { num: 35, semester: 5, semesterName: 'Semester V', title: 'Range Development', topics: 'Design a cohesive mini collection or fashion line using market research, trend forecasting, and conceptual thinking.' },
+  { num: 36, semester: 5, semesterName: 'Semester V', title: 'CAD IV (Advanced CLO 3D)', topics: 'Deepen your CLO 3D skills to simulate and test garments virtually before physical production.' },
+  { num: 37, semester: 5, semesterName: 'Semester V', title: 'Pattern Making (Knitwear)', topics: 'Focus on patterns specifically for stretch fabrics like knits used in casual and sportswear.' },
+  { num: 38, semester: 5, semesterName: 'Semester V', title: 'Garment Manufacturing (7 Garments)', topics: 'Translate knit patterns into finished garments with industrial finishing and quality control techniques.' },
+  { num: 39, semester: 5, semesterName: 'Semester V', title: 'Draping (Woven & Knit Fabrics)', topics: 'Learn the challenges and differences in draping structured woven fabrics versus flexible knits.' },
+  { num: 40, semester: 5, semesterName: 'Semester V', title: 'Fashion Branding & E-Commerce', topics: 'Learn the essentials of building a fashion brand, its digital presence, and how to sell online.' },
+  { num: 41, semester: 5, semesterName: 'Semester V', title: 'Fashion Forecasting', topics: 'Study consumer behavior, historical cycles, and global influences to predict future fashion trends.' },
+  { num: 42, semester: 5, semesterName: 'Semester V', title: 'Craft Documentation (Project)', topics: 'Undertake a research-based project documenting traditional craft practices, artisanship, and sustainability.' },
+  { num: 43, semester: 5, semesterName: 'Semester V', title: 'Industrial Internship', topics: 'Apply classroom knowledge in a real industry setting, gaining hands-on experience and professional networking.' },
+  // Semester VI
+  { num: 44, semester: 6, semesterName: 'Semester VI', title: 'Portfolio Development', topics: 'Create a professional portfolio showcasing your designs, technical work, illustrations, and projects—crucial for job placements and higher studies.' },
+  { num: 45, semester: 6, semesterName: 'Semester VI', title: 'Fashion Merchandising & Marketing', topics: 'Learn how to present, promote, and sell your designs through strategic planning and market awareness.' },
+  { num: 46, semester: 6, semesterName: 'Semester VI', title: 'Global Markets', topics: 'Understand international fashion business, export processes, and global consumer trends.' },
+  { num: 47, semester: 6, semesterName: 'Semester VI', title: 'Fashion Business Management', topics: 'Develop business acumen through modules in finance, production planning, costing, and retail management.' },
+  { num: 48, semester: 6, semesterName: 'Semester VI', title: 'Quality Control', topics: 'Study quality assurance standards, testing methods, and how to maintain consistency in garment production.' },
+  { num: 49, semester: 6, semesterName: 'Semester VI', title: 'JD Design Awards', topics: 'Culmination of your three-year journey—present your final collection or capstone project at a professional-level fashion show.' }
 ]};
 
 function isSemesterUnlocked(syllabusSessions, studentSessions, semesterNum) {
@@ -2955,6 +3069,44 @@ function leaveRequestToRange(r) {
   }
   return null;
 }
+
+// One-time sweep: every student STILL stuck showing 'on_leave' whose most recent approved
+// leave already ended (nobody clicked "I'm Back", and — before the self-heal fix — nothing
+// else ever flipped it back). The self-heal in index.html fixes this automatically the next
+// time each affected student opens their app, but that only happens as each student logs in
+// — this sweep exists purely so admin can fix everyone immediately instead of waiting for
+// that to happen naturally, one student at a time. Optional; the self-heal alone resolves
+// everything over time.
+async function sweepStuckOnLeaveStudents() {
+  if (!confirm('Scan every student currently marked "On Leave" and flip anyone whose approved leave has already ended back to Active? This mirrors exactly what happens automatically the next time each of them opens their own app — it just does it for everyone right now instead of waiting.')) return;
+  try {
+    const stuck = allStudents.filter(s => s.status === 'on_leave');
+    if (!stuck.length) { showToast('No students are currently marked "On Leave".', 'success'); return; }
+    const todayStr = localDateStr(new Date());
+    let fixedCount = 0;
+    for (const s of stuck) {
+      const myRequests = allLeaveRequests
+        .filter(r => r.studentDocId === s.docId)
+        .sort((a,b) => (b.requestedAt?.seconds||0) - (a.requestedAt?.seconds||0));
+      const latest = myRequests[0];
+      let effectiveDateTo = latest && latest.dateTo;
+      if (latest && !effectiveDateTo && latest.requestedAt) {
+        effectiveDateTo = localDateStr(new Date(latest.requestedAt.seconds*1000));
+      }
+      const leaveIsOver = !!(effectiveDateTo && todayStr > effectiveDateTo);
+      const isOnLeaveNow = !!(latest && latest.status === 'approved' && !leaveIsOver);
+      if (!isOnLeaveNow) {
+        await updateDoc(doc(db,'cadd_students', s.docId), { status: 'active' });
+        s.status = 'active'; // keep the in-memory allStudents copy consistent without a full reload
+        fixedCount++;
+      }
+    }
+    showToast(fixedCount ? `Fixed ${fixedCount} stuck student${fixedCount===1?'':'s'} — back to Active.` : 'Everyone currently "On Leave" still has a genuinely current approved leave — nothing to fix.', 'success');
+    filterStudents();
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.sweepStuckOnLeaveStudents = sweepStuckOnLeaveStudents;
+
 // A student's own approved leave date-ranges (distinct from their faculty's leave) — also
 // excluded from absence calculations, since an approved leave is, by definition, an excused
 // absence and shouldn't count against Days Absent / Streak / Live Slots.
