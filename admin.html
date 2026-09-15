@@ -305,7 +305,7 @@
         <div class="stat-card"><div class="sv orange" id="ov-present">—</div><div class="sl">Present Today</div></div>
         <div class="stat-card"><div class="sv red" id="ov-leave">—</div><div class="sl">On Leave</div></div>
         <div class="stat-card"><div class="sv" id="ov-deactivated">—</div><div class="sl">Deactivated</div></div>
-        <div class="stat-card"><div class="sv" id="ov-completed">—</div><div class="sl">🎓 Completed</div></div>
+        <div class="stat-card" style="cursor:pointer" onclick="jumpToCompletedStudents()"><div class="sv" id="ov-completed">—</div><div class="sl">🎓 Completed</div></div>
       </div>
       <div class="card">
         <div class="card-title">Today's Check-Ins</div>
@@ -913,6 +913,7 @@
                 <option value="deactivated">Deactivated</option>
                 <option value="completed">🎓 Completed</option>
               </select>
+              <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:10px" onclick="forceFixStudentLeave(editingStudentId)" title="One-time aggressive override for a very old/broken leave record the normal fixes can't reach">🔧 Force-Fix Stuck Leave</button>
             </div>
           </div>
           <div class="f-group f-span2" style="margin-top:14px">
@@ -2580,19 +2581,25 @@ function renderLeaveRequests() {
       ? (r.dateFrom === r.dateTo ? r.dateFrom : `${r.dateFrom} → ${r.dateTo}`)
       : (r.requestedAt ? new Date(r.requestedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—');
     let statusHtml, actionsHtml = '';
+    // The actual review/approval date, shown wherever it applies — makes history traceable
+    // (never ambiguous whether/when something was genuinely approved), and stays visible
+    // even after a leave is later revoked/restored — a revoke doesn't erase that it WAS
+    // genuinely approved at some point, and Restore (see Fix #1) is careful to preserve
+    // this exact original date rather than overwriting it with the restore moment.
+    const reviewedLabel = r.reviewedAt ? new Date(r.reviewedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : null;
     if (r.status === 'pending') {
       statusHtml = `<span style="color:#F0C040;font-weight:600">⏳ Pending</span>`;
       actionsHtml = `
         <button class="btn btn-green btn-sm" onclick="approveLeaveRequest('${r.id}','${r.studentDocId}')">✅ Approve</button>
         <button class="btn btn-red btn-sm" onclick="rejectLeaveRequest('${r.id}')">✕ Reject</button>`;
     } else if (r.status === 'approved') {
-      statusHtml = `<span style="color:var(--green);font-weight:600">✅ Approved</span>`;
+      statusHtml = `<span style="color:var(--green);font-weight:600">✅ Approved</span>${reviewedLabel ? `<div style="font-size:10px;color:var(--text3);font-weight:400">on ${reviewedLabel}</div>` : ''}`;
       actionsHtml = `<button class="btn btn-red btn-sm" onclick="adminRevokeStudentLeave('${r.id}','${r.studentDocId}')">↩️ Revoke</button>`;
     } else if (r.status === 'revoked') {
-      statusHtml = `<span style="color:#7A84FF;font-weight:600">↩️ Ended early by student</span>`;
+      statusHtml = `<span style="color:#7A84FF;font-weight:600">↩️ Ended early by student</span>${reviewedLabel ? `<div style="font-size:10px;color:var(--text3);font-weight:400">approved ${reviewedLabel}</div>` : ''}`;
       actionsHtml = `<button class="btn btn-green btn-sm" onclick="restoreStudentLeave('${r.id}','${r.studentDocId}')">Restore to Approved</button>`;
     } else {
-      statusHtml = `<span style="color:var(--red);font-weight:600">❌ Rejected</span>`;
+      statusHtml = `<span style="color:var(--red);font-weight:600">❌ Rejected</span>${reviewedLabel ? `<div style="font-size:10px;color:var(--text3);font-weight:400">on ${reviewedLabel}</div>` : ''}`;
     }
     actionsHtml += `<button class="btn btn-ghost btn-sm" onclick="deleteLeaveRequest('${r.id}')" title="Permanently delete this record" style="color:var(--red)">🗑️</button>`;
     const tr = document.createElement('tr');
@@ -2662,10 +2669,13 @@ window.adminRevokeStudentLeave = adminRevokeStudentLeave;
 async function restoreStudentLeave(requestId, studentDocId) {
   if (!confirm('Restore this leave to "Approved" and mark the student "On Leave" again?')) return;
   try {
-    await updateDoc(doc(db,'cadd_leave_requests',requestId), { status: 'approved', reviewedAt: Timestamp.now() });
+    // Restoring un-does an early end — it is NOT a fresh approval, so the original
+    // approval timestamp (reviewedAt, stamped the first time this was ever approved) must
+    // stay untouched. Only clear revokedAt, since that no longer applies once restored.
+    await updateDoc(doc(db,'cadd_leave_requests',requestId), { status: 'approved', revokedAt: null });
     await updateDoc(doc(db,'cadd_students',studentDocId), { status: 'on_leave' });
     const r = allLeaveRequests.find(x => x.id === requestId);
-    if (r) { r.status = 'approved'; r.reviewedAt = Timestamp.now(); }
+    if (r) { r.status = 'approved'; r.revokedAt = null; }
     const s = allStudents.find(x => x.docId === studentDocId);
     if (s) s.status = 'on_leave';
     showToast('Leave restored — student marked "On Leave"', 'success');
@@ -2875,11 +2885,17 @@ async function computeStudentDayLog(student) {
   const snap = await getDocs(q);
   const records = snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.checkIn);
 
+  // "Latest session that day" drives the day's STATUS (present/absent/etc) and which
+  // check-in/out times are shown — but hours must be summed across EVERY session that day
+  // separately, or a student's second session (after a break, or a re-check-in) silently
+  // loses its hours from both the per-row Hours column and the Total Hours summary.
   const recByDate = {};
+  const hoursByDate = {};
   records.forEach(r=>{
     const ds = localDateStr(new Date(r.checkIn.seconds*1000));
     const existing = recByDate[ds];
     if (!existing || r.checkIn.seconds > existing.checkIn.seconds) recByDate[ds] = r;
+    if (r.checkOut) hoursByDate[ds] = (hoursByDate[ds] || 0) + (r.checkOut.seconds - r.checkIn.seconds) / 3600;
   });
 
   const schedDays = Array.isArray(student.attendanceDays) ? student.attendanceDays.map(Number) : [];
@@ -2904,7 +2920,7 @@ async function computeStudentDayLog(student) {
     else if (isDateInLeaveRanges(cursor, leaveRanges)) status = 'onLeave';
     else if (isDateInLeaveRanges(cursor, facLeaveRanges)) status = 'facultyLeave';
     else status = 'absent';
-    log.push({ date: new Date(cursor), status, record: rec || null });
+    log.push({ date: new Date(cursor), status, record: rec || null, hoursForDay: hoursByDate[ds] || 0 });
     cursor.setDate(cursor.getDate()+1);
   }
   return log.reverse(); // most recent first
@@ -2972,12 +2988,10 @@ function renderDayLogSummary() {
   const onLeaveCount = currentDayLog.filter(d => d.status==='onLeave' || d.status==='facultyLeave').length;
   const holidayCount = currentDayLog.filter(d => d.status==='holiday').length;
   // Total Hours always reflects the FULL log range, unaffected by the status filter below.
+  // Sums hoursForDay (every session that day) — NOT just the single latest-session record —
+  // so a second same-day session (after a break, or a re-check-in) isn't silently dropped.
   let totalHrs = 0;
-  currentDayLog.forEach(d => {
-    if (d.record && d.record.checkIn && d.record.checkOut) {
-      totalHrs += (d.record.checkOut.seconds - d.record.checkIn.seconds) / 3600;
-    }
-  });
+  currentDayLog.forEach(d => { totalHrs += d.hoursForDay || 0; });
   document.getElementById('dl-present').textContent = present;
   document.getElementById('dl-absent').textContent = absent;
   document.getElementById('dl-leave').textContent = onLeaveCount;
@@ -3006,12 +3020,15 @@ function renderDayLogTable() {
   tb.innerHTML = '';
   rows.forEach(d => {
     const rec = d.record;
-    let checkIn = '—', checkOut = '—', hours = '—';
+    let checkIn = '—', checkOut = '—';
+    // Hours column always uses the full per-day sum (hoursForDay), not just this row's
+    // shown session — a day with two sessions shows both check-in/out times from the
+    // latest one, but the combined hours from all of them.
+    const hours = d.hoursForDay ? d.hoursForDay.toFixed(1) : '—';
     if (rec && rec.checkIn) {
       checkIn = new Date(rec.checkIn.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
       if (rec.checkOut) {
         checkOut = new Date(rec.checkOut.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) + (rec.autoLogout ? ' ⚡' : '');
-        hours = ((rec.checkOut.seconds - rec.checkIn.seconds) / 3600).toFixed(1);
       } else {
         checkOut = '<span style="color:var(--green)">Active</span>';
       }
@@ -3043,7 +3060,8 @@ function exportDayLogExcel() {
       Status: DAY_LOG_STATUS_LABEL[d.status].replace(/^[^\s]+\s/,''),
       'Check In': rec && rec.checkIn ? new Date(rec.checkIn.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '',
       'Check Out': rec && rec.checkOut ? new Date(rec.checkOut.seconds*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : (rec ? 'Active' : ''),
-      'Hours': rec && rec.checkIn && rec.checkOut ? ((rec.checkOut.seconds - rec.checkIn.seconds)/3600).toFixed(1) : '',
+      // Full per-day sum, not just this row's single latest session — see renderDayLogTable.
+      'Hours': d.hoursForDay ? d.hoursForDay.toFixed(1) : '',
       'Auto-Logout': rec && rec.autoLogout ? 'Yes' : 'No'
     };
   });
@@ -3060,9 +3078,25 @@ window.exportDayLogExcel = exportDayLogExcel;
 // and the student/faculty shows "Absent" for a period they actually had approved leave for.
 function leaveRequestToRange(r) {
   if (r.dateFrom && r.dateTo) {
-    return { from: new Date(r.dateFrom+'T00:00:00'), to: new Date(r.dateTo+'T23:59:59') };
+    const from = new Date(r.dateFrom+'T00:00:00');
+    let to = new Date(r.dateTo+'T23:59:59');
+    if (r.status === 'revoked' && r.revokedAt) {
+      // Ended early ("I'm Back") — exclude only through the day BEFORE they came back. Days
+      // that had already elapsed while the leave was genuinely approved must stay excluded
+      // permanently, regardless of what happens to the request afterward (a revoke used to
+      // wipe out the WHOLE range the instant it was clicked, turning already-excused past
+      // days retroactively into "Absent" everywhere).
+      const cameBackDay = new Date(r.revokedAt.seconds*1000); cameBackDay.setHours(0,0,0,0);
+      const dayBefore = new Date(cameBackDay); dayBefore.setDate(dayBefore.getDate()-1); dayBefore.setHours(23,59,59,999);
+      if (dayBefore < to) to = dayBefore;
+    }
+    if (to < from) return null; // revoked on/before the leave's first day — nothing left to exclude
+    return { from, to };
   }
-  if (r.requestedAt) {
+  // Legacy dateless fallback only applies to a genuinely still-approved record — a revoked
+  // record with no stored dates has nothing reliable to cap, so it contributes nothing rather
+  // than guessing.
+  if (r.status === 'approved' && r.requestedAt) {
     const d = new Date(r.requestedAt.seconds*1000); d.setHours(0,0,0,0);
     const end = new Date(d); end.setHours(23,59,59,999);
     return { from: d, to: end };
@@ -3089,11 +3123,11 @@ async function sweepStuckOnLeaveStudents() {
         .filter(r => r.studentDocId === s.docId)
         .sort((a,b) => (b.requestedAt?.seconds||0) - (a.requestedAt?.seconds||0));
       const latest = myRequests[0];
-      let effectiveDateTo = latest && latest.dateTo;
-      if (latest && !effectiveDateTo && latest.requestedAt) {
-        effectiveDateTo = localDateStr(new Date(latest.requestedAt.seconds*1000));
-      }
-      const leaveIsOver = !!(effectiveDateTo && todayStr > effectiveDateTo);
+      // Only a REAL stored dateTo counts as "over" here — no single-day fallback for
+      // dateless legacy records, since guessing would incorrectly sweep up a leave that was
+      // always meant to stay manually-revoke-only (matches the same carve-out used in
+      // index.html's resolveLeaveStatusAndSelfHeal).
+      const leaveIsOver = !!(latest && latest.dateTo && todayStr > latest.dateTo);
       const isOnLeaveNow = !!(latest && latest.status === 'approved' && !leaveIsOver);
       if (!isOnLeaveNow) {
         await updateDoc(doc(db,'cadd_students', s.docId), { status: 'active' });
@@ -3113,7 +3147,7 @@ window.sweepStuckOnLeaveStudents = sweepStuckOnLeaveStudents;
 function getStudentLeaveRanges(studentDocId) {
   if (!studentDocId) return [];
   return allLeaveRequests
-    .filter(r => r.studentDocId === studentDocId && r.status === 'approved')
+    .filter(r => r.studentDocId === studentDocId && (r.status === 'approved' || r.status === 'revoked'))
     .map(r => leaveRequestToRange(r))
     .filter(Boolean);
 }
@@ -3438,6 +3472,16 @@ function clearStudentFilters() {
 }
 window.clearStudentFilters = clearStudentFilters;
 
+// Overview's 🎓 Completed stat card jumps here — the filter/hide-by-default logic already
+// existed in filterStudents() above (completed students are hidden unless this exact filter
+// is chosen); this just wires up the entry point from the Overview card.
+function jumpToCompletedStudents() {
+  showPage('students');
+  document.getElementById('filterStatus').value = 'completed';
+  filterStudents();
+}
+window.jumpToCompletedStudents = jumpToCompletedStudents;
+
 function filterStudents() {
   const s=document.getElementById('searchInput').value.toLowerCase();
   const c=document.getElementById('filterCourse').value;
@@ -3469,13 +3513,77 @@ function filterStudents() {
   renderStudents(filtered);
 }
 
+// Only revoke a leave that's still GENUINELY ONGOING (no end date at all, or its end date
+// hasn't passed yet). A leave that already reached its own natural end date is NOT an "early
+// end" — it must stay "Approved" forever, exactly as applied. Revoking it here would
+// incorrectly relabel a completed leave as ended early — the same mistake the self-heal
+// mechanism is careful never to make, for the identical reason (by the time either of these
+// paths reaches an already-past-end-date record, it has always already run its natural
+// course — there's nothing left to "end early").
+async function syncLeaveOnTakingOffLeave(studentDocId) {
+  const todayStr = localDateStr(new Date());
+  const stillOpen = allLeaveRequests.filter(r =>
+    r.studentDocId === studentDocId && r.status === 'approved' && (!r.dateTo || todayStr <= r.dateTo)
+  );
+  for (const r of stillOpen) {
+    await updateDoc(doc(db,'cadd_leave_requests', r.id), { status: 'revoked', revokedAt: Timestamp.now() });
+    r.status = 'revoked'; r.revokedAt = Timestamp.now();
+  }
+  return stillOpen.length;
+}
+
+// Shared by BOTH the Edit Student form and the quick per-row status dropdown, so neither
+// path can silently diverge from the other (which is exactly how the on_leave-sync bug
+// happened in the first place — it only ever got fixed in one of the two places). Handles
+// the on_leave→active leave-request sync above, and stamps the Completed audit trail once,
+// the first time — never overwritten on a later save if already completed. Does NOT write
+// to the student doc itself; returns the extra fields for the caller to merge into whatever
+// update it's already making.
+async function prepareStatusChangeSideEffects(studentDocId, prevStatus, newStatus, studentObj) {
+  const extra = {};
+  if (prevStatus === 'on_leave' && newStatus !== 'on_leave') {
+    const revokedCount = await syncLeaveOnTakingOffLeave(studentDocId);
+    if (revokedCount) showToast(`Ended ${revokedCount} still-ongoing approved leave${revokedCount>1?'s':''} too, so this sticks on their end.`, 'success');
+  }
+  const alreadyCompleted = studentObj && studentObj.completedAt;
+  if (newStatus === 'completed' && prevStatus !== 'completed' && !alreadyCompleted) {
+    extra.completedAt = Timestamp.now();
+    extra.completedBy = (typeof auth !== 'undefined' && auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'admin';
+  }
+  return extra;
+}
+
 async function quickStatusChange(docId, status) {
   if(!status) return;
-  await updateDoc(doc(db,'cadd_students',docId),{status});
   const s=allStudents.find(x=>x.docId===docId);
-  if(s) s.status=status;
-  filterStudents();
-  showToast('Status updated to '+status.replace('_',' '),'success');
+  const prevStatus = s ? s.status : null;
+  // Same interception as the Edit Student form — see saveEditStudent() below — so this
+  // quick dropdown can't create a raw, leave-request-less "on_leave" flag either.
+  if (status === 'on_leave' && prevStatus !== 'on_leave') {
+    const goToDatedFlow = confirm(
+      'To put a student on leave, use the dated Leave form instead — that way they can revoke it ' +
+      'themselves once they return, and those days won\'t count as absent.\n\n' +
+      'Open that form now for this student? (Cancel to save without a dated leave record — not recommended.)'
+    );
+    if (goToDatedFlow) {
+      populateAdminStudentLeaveDropdown();
+      showPage('leaveRequests');
+      document.getElementById('adminStudentLeaveForm').style.display = 'block';
+      document.getElementById('aslStudent').value = docId;
+      showToast('Pick dates below to put this student on leave.', 'warning');
+      return;
+    }
+    showToast('Saved — but this student won\'t be excluded from absence stats or get a revoke option without a dated leave record.', 'warning');
+  }
+  try {
+    const extra = await prepareStatusChangeSideEffects(docId, prevStatus, status, s);
+    const updates = { status, ...extra };
+    await updateDoc(doc(db,'cadd_students',docId), updates);
+    if (s) Object.assign(s, updates);
+    filterStudents();
+    await loadOverview();
+    showToast('Status updated to '+status.replace('_',' '),'success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
 // ── ADD STUDENT ──
@@ -3972,7 +4080,13 @@ async function checkAndSendAbsenceReminders() {
 }
 
 async function loadModalAttendance(docId, s) {
-  const q=query(collection(db,'cadd_attendance'),where('studentDocId','==',docId),limit(50));
+  // NO cap — this feeds lifetime stats (Days Present/Absent, Total Hours) AND active-session
+  // detection for Force Log Out. The old limit(50) had no matching orderBy, so it could
+  // return an ARBITRARY 50 records (not even necessarily the most recent), silently
+  // producing a wrong lifetime total for any student with more sessions than that, and
+  // occasionally missing the real active session entirely for Force Log Out. Full fetch,
+  // sorted client-side, exactly like the (already-correct) Day-by-Day Log.
+  const q=query(collection(db,'cadd_attendance'),where('studentDocId','==',docId));
   const snap=await getDocs(q);
   const records=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.checkIn.seconds-a.checkIn.seconds);
 
@@ -4134,8 +4248,11 @@ async function saveEditStudent() {
     course:document.getElementById('ed-course').value,
     faculty:document.getElementById('ed-faculty').value,
     slot:document.getElementById('ed-slot').value,
-    status:newStatus,
     attendanceDays:Array.from(ed_selectedDays).sort()
+    // status is applied further below via the SAME shared helper quickStatusChange() uses
+    // (prepareStatusChangeSideEffects) — keeps the on_leave↔active leave-request sync and
+    // the Completed audit trail identical across both places status can be changed, instead
+    // of this form silently drifting from that dropdown's behavior again.
   };
   if (admDateVal) data.admissionDate = Timestamp.fromDate(new Date(admDateVal));
   // Explicitly set to null (not skipped) when cleared, so admin can remove a validity
@@ -4146,6 +4263,9 @@ async function saveEditStudent() {
   // math falls back to admissionDate again (see getStudentStreakInfo / scheduledDaysMissed).
   data.trackingStartDate = trackingStartVal ? Timestamp.fromDate(new Date(trackingStartVal)) : null;
   try {
+    const extra = await prepareStatusChangeSideEffects(editingStudentId, prevStatus, newStatus, existing);
+    data.status = newStatus;
+    Object.assign(data, extra);
     await updateDoc(doc(db,'cadd_students',editingStudentId),data);
     const i=allStudents.findIndex(x=>x.docId===editingStudentId);
     if(i!==-1) allStudents[i]={...allStudents[i],...data};
@@ -4155,6 +4275,36 @@ async function saveEditStudent() {
     await loadOverview();
   } catch(e){showToast('Error: '+e.message,'error');}
 }
+
+// One deliberate, explicit, more-aggressive override for a leave stuck in a bad state that
+// the normal fixes above can't reach — typically an old/legacy record whose studentDocId
+// link is broken (predates a schema change, a student record that got recreated, etc).
+// Unlike every automatic fix in this file, this has NO date-eligibility check at all — it
+// closes out ANY leave request still marked "Approved" for this student, matched by BOTH
+// their real docId AND their name (case-insensitive) as a fallback, since a broken ID link
+// still usually has a matching name to fall back on. One-time, explicit, confirmed.
+async function forceFixStudentLeave(studentDocId) {
+  const s = allStudents.find(x => x.docId === studentDocId);
+  if (!s) { showToast('Save the student first, then try this.', 'error'); return; }
+  if (!confirm(`Force-close ANY leave request still marked "Approved" for ${s.name} — matched by student ID or by name as a fallback for broken/legacy records — regardless of dates? This is more aggressive than every other fix; only use it if the normal Revoke/Restore buttons on the Leave Requests page don't work for this student.`)) return;
+  try {
+    const nameLower = (s.name || '').trim().toLowerCase();
+    const matches = allLeaveRequests.filter(r =>
+      r.status === 'approved' &&
+      (r.studentDocId === studentDocId || (r.studentName && r.studentName.trim().toLowerCase() === nameLower))
+    );
+    if (!matches.length) { showToast('No approved leave requests found for this student, by ID or by name.', 'success'); return; }
+    for (const r of matches) {
+      await updateDoc(doc(db,'cadd_leave_requests', r.id), { status: 'revoked', revokedAt: Timestamp.now() });
+      r.status = 'revoked'; r.revokedAt = Timestamp.now();
+    }
+    await updateDoc(doc(db,'cadd_students', studentDocId), { status: 'active' });
+    s.status = 'active';
+    showToast(`Force-fixed ${matches.length} leave record${matches.length>1?'s':''} for ${s.name}.`, 'success');
+    filterStudents();
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.forceFixStudentLeave = forceFixStudentLeave;
 
 async function deleteStudentConfirm() {
   if(!confirm('Delete this student permanently? This will also delete ALL their attendance, feedback, and leave request records everywhere. This cannot be undone.')) return;
