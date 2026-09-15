@@ -684,9 +684,25 @@ function isDateInLeaveRanges(date, ranges) {
 // identical helper in admin.html/index.html — kept in sync.
 function leaveRequestToRange(r) {
   if (r.dateFrom && r.dateTo) {
-    return { from: new Date(r.dateFrom + 'T00:00:00'), to: new Date(r.dateTo + 'T23:59:59') };
+    const from = new Date(r.dateFrom + 'T00:00:00');
+    let to = new Date(r.dateTo + 'T23:59:59');
+    if (r.status === 'revoked' && r.revokedAt) {
+      // Ended early ("I'm Back") — exclude only through the day BEFORE they came back. Days
+      // that had already elapsed while the leave was genuinely approved must stay excluded
+      // permanently, regardless of what happens to the request afterward (a revoke used to
+      // wipe out the WHOLE range the instant it was clicked, turning already-excused past
+      // days retroactively into "Absent" everywhere).
+      const cameBackDay = new Date(r.revokedAt.seconds*1000); cameBackDay.setHours(0,0,0,0);
+      const dayBefore = new Date(cameBackDay); dayBefore.setDate(dayBefore.getDate()-1); dayBefore.setHours(23,59,59,999);
+      if (dayBefore < to) to = dayBefore;
+    }
+    if (to < from) return null; // revoked on/before the leave's first day — nothing left to exclude
+    return { from, to };
   }
-  if (r.requestedAt) {
+  // Legacy dateless fallback only applies to a genuinely still-approved record — a revoked
+  // record with no stored dates has nothing reliable to cap, so it contributes nothing rather
+  // than guessing.
+  if (r.status === 'approved' && r.requestedAt) {
     const d = new Date(r.requestedAt.seconds*1000); d.setHours(0,0,0,0);
     const end = new Date(d); end.setHours(23,59,59,999);
     return { from: d, to: end };
@@ -710,7 +726,7 @@ async function loadStudentLeaveForStreaks() {
 function getStudentLeaveRanges(studentDocId) {
   if (!studentDocId) return [];
   return allStudentLeaveForStreaks
-    .filter(r => r.studentDocId === studentDocId && r.status === 'approved')
+    .filter(r => r.studentDocId === studentDocId && (r.status === 'approved' || r.status === 'revoked'))
     .map(r => leaveRequestToRange(r))
     .filter(Boolean);
 }
@@ -1323,7 +1339,10 @@ function filterFacAttendance() {
   const to = document.getElementById('facAttDateTo').value;
   const filtered = facAttendance.filter(r => {
     const name = (r.studentName || r.studentId || '').toLowerCase();
-    const ds = new Date(r.checkIn.seconds * 1000).toISOString().split('T')[0];
+    // Local calendar date, NOT toISOString() (UTC) — a late-night local check-in could
+    // otherwise land in the wrong UTC day and silently drop out of a date-range filter.
+    const ciDate = new Date(r.checkIn.seconds * 1000);
+    const ds = ciDate.getFullYear() + '-' + String(ciDate.getMonth()+1).padStart(2,'0') + '-' + String(ciDate.getDate()).padStart(2,'0');
     if (s && !name.includes(s)) return false;
     if (from && ds < from) return false;
     if (to && ds > to) return false;
@@ -1743,6 +1762,25 @@ async function undoApprovedSession(studentDocId, modId, sessionNum) {
 }
 window.undoApprovedSession = undoApprovedSession;
 
+// The ONE editing capability faculty has on a student record — a deliberate, terminal
+// action, never auto-inferred from progress. Overrides everything else for this student
+// regardless of any individual module's completion state. Stamps the audit trail once
+// (first time only — a re-save here is a no-op if already completed, guarded by the
+// button not even being shown once s.status==='completed', see openStudentDetail above).
+async function markStudentCompletedByFaculty(studentDocId) {
+  if (!confirm('Mark this student\'s course as Completed? This locks them out of their own app immediately with a completion message, regardless of any module\'s individual progress. This cannot be undone from here — only admin can change it back.')) return;
+  try {
+    const updates = { status: 'completed', completedAt: Timestamp.now(), completedBy: currentFaculty.name };
+    await updateDoc(doc(db, 'cadd_students', studentDocId), updates);
+    const s = myStudents.find(x => x.docId === studentDocId);
+    if (s) Object.assign(s, updates);
+    showToast('Marked Completed 🎓', 'success');
+    await openStudentDetail(studentDocId); // refresh this same modal to show the new state
+    renderMyStudents();
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+window.markStudentCompletedByFaculty = markStudentCompletedByFaculty;
+
 async function openStudentDetail(studentDocId) {
   detailStudentId = studentDocId;
   const s = myStudents.find(x => x.docId === studentDocId);
@@ -1751,6 +1789,19 @@ async function openStudentDetail(studentDocId) {
   document.getElementById('sdModalTitle').textContent = s.name + ' — ' + s.studentId;
   const body = document.getElementById('sdModalBody');
   body.innerHTML = '';
+
+  // ONE narrowly-scoped editing action faculty gets on a student record — everything else
+  // stays admin-only. A deliberate, explicit action; never auto-inferred from module/session
+  // progress, and it overrides everything else for this student regardless of individual
+  // module completion state.
+  const completedBox = document.createElement('div');
+  completedBox.style.cssText = 'margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;';
+  if (s.status === 'completed') {
+    completedBox.innerHTML = `<span style="font-size:12px;color:var(--text2)">🎓 Marked Completed${s.completedBy ? ' by ' + s.completedBy : ''}${s.completedAt ? ' on ' + new Date(s.completedAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>`;
+  } else {
+    completedBox.innerHTML = `<span style="font-size:12px;color:var(--text3)">Finished the course?</span><button class="btn btn-orange btn-sm" onclick="markStudentCompletedByFaculty('${studentDocId}')">🎓 Mark Course Completed</button>`;
+  }
+  body.appendChild(completedBox);
 
   Object.entries(s.modules || {}).forEach(([modId, mod]) => {
     const isMine = mod.facultyAssignments && mod.facultyAssignments.some(fa => fa.facultyId === currentFaculty.docId);
