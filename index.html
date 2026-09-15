@@ -493,6 +493,22 @@
     </div>
   </div>
 
+  <!-- COURSE COMPLETED — full, deliberate lockout. Shown instead of the dashboard, before it
+       ever loads, exactly like the validity-expired screen above. Nothing underneath
+       (attendance, leave, syllabus, anything) is reachable from here. -->
+  <div id="completedScreen" style="display:none">
+    <div class="login-hero">
+      <div style="font-size:44px;margin-bottom:6px">🎓</div>
+      <h1>Congratulations!</h1>
+    </div>
+    <div class="card" style="text-align:center">
+      <p style="color:var(--text-secondary);line-height:1.6" id="completedScreenText">
+        You've successfully completed your course.<br>Your certificate is being processed and will be delivered to you shortly. Thank you for learning with us!
+      </p>
+      <button class="btn-primary" style="margin-top:16px" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
   <!-- DASHBOARD -->
   <div id="dashboard">
 
@@ -1238,6 +1254,15 @@ async function doLogin() {
       showToast('Your account has been deactivated. Contact admin.', 'error');
       btn.disabled=false; btn.textContent='Login →'; return;
     }
+    if (currentStudent.status === 'completed') {
+      sessionStorage.setItem('cadd_student_docId', currentStudent.docId); // let session-restore recognize them too
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('completedScreenText').innerHTML =
+        `You've successfully completed your course, ${currentStudent.name}!<br>Your certificate is being processed and will be delivered to you shortly. Thank you for learning with us!`;
+      document.getElementById('completedScreen').style.display='block';
+      btn.disabled=false; btn.textContent='Login →';
+      return;
+    }
     const validity = getValidityStatus(currentStudent.validityEndDate);
     if (validity.state === 'expired') {
       sessionStorage.setItem('cadd_student_docId', currentStudent.docId); // still let session-restore recognize them (so re-checking after admin extends works instantly)
@@ -1269,6 +1294,13 @@ async function tryRestoreSession() {
       currentStudent = { docId: docSnap.id, ...docSnap.data() };
       checkAndShowAnnouncement();
       if (currentStudent.status === 'deactivated') { sessionStorage.removeItem('cadd_student_docId'); return; }
+      if (currentStudent.status === 'completed') {
+        document.getElementById('loginScreen').style.display='none';
+        document.getElementById('completedScreenText').innerHTML =
+          `You've successfully completed your course, ${currentStudent.name}!<br>Your certificate is being processed and will be delivered to you shortly. Thank you for learning with us!`;
+        document.getElementById('completedScreen').style.display='block';
+        return;
+      }
       const validity = getValidityStatus(currentStudent.validityEndDate);
       if (validity.state === 'expired') {
         document.getElementById('loginScreen').style.display='none';
@@ -1552,7 +1584,10 @@ function updateLeaveDurationLabel() {
 function openLeaveRequestModal() {
   document.getElementById('leaveReasonInput').value = '';
   document.getElementById('leaveReasonCount').textContent = '0';
-  const todayStr = new Date().toISOString().slice(0,10);
+  // Local calendar date, NOT toISOString() (UTC) — avoids defaulting to "yesterday" for a
+  // window right after local midnight.
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
   document.getElementById('leaveFromInput').value = todayStr;
   document.getElementById('leaveToInput').value = todayStr;
   updateLeaveDurationLabel();
@@ -1620,15 +1655,15 @@ async function resolveLeaveStatusAndSelfHeal() {
     // NOT toISOString() — that's UTC and can roll a late-evening local date to the wrong
     // calendar day (same reasoning as the holiday-date helpers elsewhere in this file).
     const todayStr = (d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'))(new Date());
-    // Legacy approved leave with no stored dateTo falls back to a single day (the day it was
-    // requested) — same fallback used everywhere else leave ranges are computed, so a leave
-    // predating the date-range fields doesn't leave the student stuck forever either.
-    let effectiveDateTo = latest && latest.dateTo;
-    if (latest && !effectiveDateTo && latest.requestedAt) {
-      const d = new Date(latest.requestedAt.seconds * 1000);
-      effectiveDateTo = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-    const leaveIsOver = !!(effectiveDateTo && todayStr > effectiveDateTo);
+    // IMPORTANT: this "is it over yet" check is ONLY based on a REAL stored dateTo — no
+    // single-day fallback here. A legacy approved leave with no dateTo at all keeps its old
+    // behavior untouched: it's treated as still active indefinitely, self-revoke stays
+    // available, and self-heal never fires for it — you simply can't reliably know when an
+    // undated leave "ends", so guessing would auto-expire it a day after it was requested,
+    // which is wrong. (The absence-EXCLUSION calculations elsewhere use a separate, deliberate
+    // single-day fallback for dateless records — a different concern from this button/badge
+    // decision.)
+    const leaveIsOver = !!(latest && latest.dateTo && todayStr > latest.dateTo);
     isOnLeaveNow = !!(latest && latest.status === 'approved' && !leaveIsOver);
 
     if (latest && latest.status === 'pending') {
@@ -1640,10 +1675,12 @@ async function resolveLeaveStatusAndSelfHeal() {
     } else if (latest && latest.status === 'approved') {
       const range = latest.dateFrom ? `${latest.dateFrom} → ${latest.dateTo}` : new Date(latest.requestedAt.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
       statusText.textContent = leaveIsOver
-        ? `Your leave (${range}) has ended — welcome back!`
+        ? `Your leave (${range}) was approved and has ended — welcome back!`
         : `✅ Your leave (${range}) was approved.`;
       statusBox.style.display = 'block';
-      btn.style.display = 'none'; // don't offer a new request while one is already active
+      // Once the leave has fully run its course, the student is free to submit a new
+      // request again — only block a NEW request while one is still genuinely active.
+      btn.style.display = leaveIsOver ? 'block' : 'none';
       // Once the leave's own date range has passed there's nothing left to revoke — it just
       // ran its course. Only offer the self-revoke button while it's still genuinely current.
       revokeBtn.style.display = leaveIsOver ? 'none' : 'block';
@@ -1979,10 +2016,15 @@ window.logPracticeSession = logPracticeSession;
 async function loadStats() {
   const q = query(collection(db,'cadd_attendance'), where('studentDocId','==',currentStudent.docId));
   const snap = await getDocs(q);
+  // NO cap here — this feeds lifetime stats (Total Hours, Days Present, Days Absent), which
+  // must sum the COMPLETE attendance history every time. A cap here used to silently produce
+  // a wrong lifetime total for any student with more than 60 sessions, and disagreed with
+  // admin's own Day-by-Day Log (which already fetches uncapped). Any display list that
+  // legitimately wants a bounded recent window (see "History" below) re-slices from this
+  // full set as a separate, later step — never the other way around.
   const records = snap.docs
     .map(d => ({id:d.id,...d.data()}))
-    .sort((a,b) => b.checkIn.seconds - a.checkIn.seconds)
-    .slice(0, 60);
+    .sort((a,b) => b.checkIn.seconds - a.checkIn.seconds);
 
   let totalHrs = 0; const presentDays = new Set();
   records.forEach(r => {
@@ -1998,13 +2040,28 @@ async function loadStats() {
     const lsnap = await getDocs(lq);
     myLeaveRanges = lsnap.docs
       .map(d => d.data())
-      .filter(r => r.status === 'approved')
+      .filter(r => r.status === 'approved' || r.status === 'revoked')
       .map(r => {
         // Prefer stored dateFrom/dateTo; fall back to a single day (the request date) for
         // legacy approved leave that predates the date-range fields — otherwise it silently
         // contributes zero excluded days and shows as "Absent" despite being approved leave.
-        if (r.dateFrom && r.dateTo) return { from: new Date(r.dateFrom+'T00:00:00'), to: new Date(r.dateTo+'T23:59:59') };
-        if (r.requestedAt) {
+        // Only a still-'approved' record falls through to that dateless fallback — a revoked
+        // record with no stored dates has nothing reliable to cap, so it contributes nothing.
+        if (r.dateFrom && r.dateTo) {
+          const from = new Date(r.dateFrom+'T00:00:00');
+          let to = new Date(r.dateTo+'T23:59:59');
+          if (r.status === 'revoked' && r.revokedAt) {
+            // Ended early ("I'm Back") — exclude only through the day BEFORE coming back.
+            // Days already elapsed while genuinely approved must stay excluded permanently,
+            // regardless of what happens to the request afterward.
+            const cameBackDay = new Date(r.revokedAt.seconds*1000); cameBackDay.setHours(0,0,0,0);
+            const dayBefore = new Date(cameBackDay); dayBefore.setDate(dayBefore.getDate()-1); dayBefore.setHours(23,59,59,999);
+            if (dayBefore < to) to = dayBefore;
+          }
+          if (to < from) return null; // revoked on/before the leave's first day — nothing to exclude
+          return { from, to };
+        }
+        if (r.status === 'approved' && r.requestedAt) {
           const d = new Date(r.requestedAt.seconds*1000); d.setHours(0,0,0,0);
           const end = new Date(d); end.setHours(23,59,59,999);
           return { from: d, to: end };
@@ -2317,8 +2374,20 @@ async function handleAttendanceAction() {
     document.getElementById('actionCard').style.display='block';
 
     if (activeSession) {
-      await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.now(),autoLogout:false});
-      showToast('Logged out successfully! See you next time 👋','success');
+      // Apply the SAME auto-logout cap here that checkActiveSession() already applies on
+      // page load — without this, a session left open past the cap (phone locked, tab
+      // backgrounded, no reload) and then manually ended would silently record the full
+      // real elapsed time instead of being capped, since the cap was only ever checked at
+      // load time, not inside the manual logout action itself.
+      const elapsedHrs = (Date.now() - activeSession.checkIn.seconds*1000) / 36e5;
+      if (elapsedHrs >= AUTO_LOGOUT_HRS) {
+        const autoTime = new Date(activeSession.checkIn.seconds*1000 + AUTO_LOGOUT_HRS*36e5);
+        await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.fromDate(autoTime),autoLogout:true});
+        showToast(`Session was capped at ${AUTO_LOGOUT_HRS} hours (auto-logout) — you'd been checked in a while!`,'warning');
+      } else {
+        await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.now(),autoLogout:false});
+        showToast('Logged out successfully! See you next time 👋','success');
+      }
       activeSession=null;
       document.getElementById('sessionBanner').style.display='none';
       document.getElementById('actionCard').style.display='none';
@@ -2340,7 +2409,7 @@ async function handleAttendanceAction() {
         autoLogout:false, lat:pos.lat, lng:pos.lng,
         course:currentStudent.course||'', slot:currentStudent.slot||'', faculty:currentStudent.faculty||''
       });
-      activeSession={id:newDoc.id};
+      activeSession={id:newDoc.id, checkIn: Timestamp.now()};
       const now=new Date();
       document.getElementById('sessionBanner').style.display='flex';
       document.getElementById('sessionStartTime').textContent='Checked in at '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
@@ -2386,6 +2455,10 @@ function doLogout() {
   sessionStorage.removeItem('cadd_student_docId');
   if (clockInterval) clearInterval(clockInterval);
   document.getElementById('dashboard').style.display='none';
+  // Also hide any lockout screen that might currently be showing — otherwise it can linger
+  // visible underneath/alongside the login screen after signing out from it.
+  document.getElementById('validityExpiredScreen').style.display='none';
+  document.getElementById('completedScreen').style.display='none';
   document.getElementById('loginScreen').style.display='block';
   document.getElementById('loginBtn').disabled=false;
   document.getElementById('loginBtn').textContent='Login →';
