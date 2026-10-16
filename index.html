@@ -845,7 +845,16 @@ const HOME_RADIUS = 150;
 const CENTRE_LAT = TEST_MODE ? HOME_LAT : VASHI_LAT;
 const CENTRE_LNG = TEST_MODE ? HOME_LNG : VASHI_LNG;
 const RADIUS_M = TEST_MODE ? HOME_RADIUS : VASHI_RADIUS;
-const AUTO_LOGOUT_HRS = 3;
+// Everyone still checked in at 8:00 PM (device-local time — the institute runs on IST) is
+// automatically logged out, with checkOut stamped at exactly 8:00 PM regardless of when the
+// app or admin panel actually notices. This replaces the old "3 hours after check-in" cap.
+const AUTO_LOGOUT_HOUR = 20;
+function autoLogoutCutoff(checkInSeconds) {
+  const ci = new Date(checkInSeconds * 1000);
+  const cutoff = new Date(ci); cutoff.setHours(AUTO_LOGOUT_HOUR, 0, 0, 0);
+  // A check-in at/after 8 PM has no window left — never back-date a checkout BEFORE its own check-in.
+  return cutoff < ci ? ci : cutoff;
+}
 
 // Syllabus content — semester-by-semester, topic-by-topic breakdown, keyed by module id.
 // Kept in manual sync with admin.html/faculty.html — module ids and session `num`s must
@@ -1184,9 +1193,36 @@ function showToast(msg, type='') {
   setTimeout(() => t.className = 'toast', 3400);
 }
 
+// If the student has the app open when 8:00 PM arrives, log them out right then (the
+// page-load and admin-panel paths above cover everyone who doesn't). On a failed write
+// (e.g. offline) it waits 30s before retrying instead of hammering every second.
+let autoLogoutBusy = false;
+async function autoLogoutIfPastCutoff() {
+  if (autoLogoutBusy || !activeSession || !activeSession.checkIn) return;
+  const cutoff = autoLogoutCutoff(activeSession.checkIn.seconds);
+  if (Date.now() < cutoff.getTime()) return;
+  autoLogoutBusy = true;
+  let failed = false;
+  try {
+    await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.fromDate(cutoff),autoLogout:true});
+    await autoTickCurrentSession();
+    activeSession = null;
+    document.getElementById('sessionBanner').style.display='none';
+    document.getElementById('actionCard').style.display='none';
+    document.getElementById('doneForDayBanner').style.display='flex';
+    const btn = document.getElementById('mainActionBtn');
+    btn.className='btn-checkin'; btn.textContent='✅ Mark Attendance';
+    document.getElementById('actionLabel').textContent='Tap below to mark your attendance for today';
+    showToast('You were automatically logged out at 8:00 PM ⚡','warning');
+    await loadStats();
+  } catch(e) { failed = true; console.error('Auto-logout error:', e); }
+  finally { if (failed) setTimeout(() => { autoLogoutBusy = false; }, 30000); else autoLogoutBusy = false; }
+}
+
 function startClock() {
   if (clockInterval) clearInterval(clockInterval);
   function tick() {
+    autoLogoutIfPastCutoff();
     const now = new Date();
     document.getElementById('liveClock').textContent =
       now.toLocaleTimeString('en-IN', { hour12:false });
@@ -2295,12 +2331,11 @@ async function checkActiveSession() {
       }
 
       activeSession = { id: mostRecent.id, ...mostRecent };
-      const elapsed=(Date.now()-activeSession.checkIn.seconds*1000)/36e5;
-      if (elapsed >= AUTO_LOGOUT_HRS) {
-        const autoTime=new Date(activeSession.checkIn.seconds*1000+AUTO_LOGOUT_HRS*36e5);
-        await updateDoc(doc(db,'cadd_attendance',mostRecent.id),{checkOut:Timestamp.fromDate(autoTime),autoLogout:true});
+      const cutoff = autoLogoutCutoff(activeSession.checkIn.seconds);
+      if (Date.now() >= cutoff.getTime()) {
+        await updateDoc(doc(db,'cadd_attendance',mostRecent.id),{checkOut:Timestamp.fromDate(cutoff),autoLogout:true});
         await autoTickCurrentSession();
-        activeSession=null; showToast('Previous session auto-logged out after 3 hours ⚡','warning');
+        activeSession=null; showToast('Your previous session was automatically logged out at 8:00 PM ⚡','warning');
         await loadStats(); return;
       }
       const ci=new Date(activeSession.checkIn.seconds*1000);
@@ -2379,11 +2414,10 @@ async function handleAttendanceAction() {
       // backgrounded, no reload) and then manually ended would silently record the full
       // real elapsed time instead of being capped, since the cap was only ever checked at
       // load time, not inside the manual logout action itself.
-      const elapsedHrs = (Date.now() - activeSession.checkIn.seconds*1000) / 36e5;
-      if (elapsedHrs >= AUTO_LOGOUT_HRS) {
-        const autoTime = new Date(activeSession.checkIn.seconds*1000 + AUTO_LOGOUT_HRS*36e5);
-        await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.fromDate(autoTime),autoLogout:true});
-        showToast(`Session was capped at ${AUTO_LOGOUT_HRS} hours (auto-logout) — you'd been checked in a while!`,'warning');
+      const cutoff = autoLogoutCutoff(activeSession.checkIn.seconds);
+      if (Date.now() >= cutoff.getTime()) {
+        await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.fromDate(cutoff),autoLogout:true});
+        showToast('Your session was already auto-logged out at 8:00 PM ⚡','warning');
       } else {
         await updateDoc(doc(db,'cadd_attendance',activeSession.id),{checkOut:Timestamp.now(),autoLogout:false});
         showToast('Logged out successfully! See you next time 👋','success');
@@ -2402,6 +2436,9 @@ async function handleAttendanceAction() {
       const todaysDocs = ex.docs.filter(d=>d.data().checkIn.seconds*1000 >= todayStart.getTime());
       if (todaysDocs.some(d=>d.data().checkOut!==null)) {
         showToast("Today's session already completed!",'warning'); btn.disabled=false; btn.textContent='✅ Mark Attendance'; return;
+      }
+      if (new Date().getHours() >= AUTO_LOGOUT_HOUR) {
+        showToast("Attendance closes at 8:00 PM — you can't check in after that.",'error'); btn.disabled=false; btn.textContent='✅ Mark Attendance'; return;
       }
       const newDoc=await addDoc(collection(db,'cadd_attendance'),{
         studentDocId:currentStudent.docId, studentId:currentStudent.studentId,
