@@ -1056,7 +1056,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const AUTO_LOGOUT_HRS = 3; // same rule as the student app — used to auto-close stale sessions whenever admin loads attendance
+// Same rule as the student app: anyone still checked in at 8:00 PM (device-local, institute is
+// on IST) is auto-logged-out, checkOut stamped at exactly 8:00 PM. Replaces the old 3-hour cap.
+const AUTO_LOGOUT_HOUR = 20;
+function autoLogoutCutoff(checkInSeconds) {
+  const ci = new Date(checkInSeconds * 1000);
+  const cutoff = new Date(ci); cutoff.setHours(AUTO_LOGOUT_HOUR, 0, 0, 0);
+  return cutoff < ci ? ci : cutoff; // never back-date a checkout before its own check-in
+}
 let allStudents = [], allAttendance = [], slots = [];
 let allFaculty = [];
 let editingStudentId = null;
@@ -4337,7 +4344,7 @@ async function deleteStudentConfirm() {
   } catch(e){showToast('Error: '+e.message,'error');}
 }
 
-// Auto-closes any attendance session that's been open (checkOut==null) for 3+ hours.
+// Auto-closes any attendance session still open (checkOut==null) past its 8:00 PM cutoff.
 // The student app only runs this check when that student personally reopens their dashboard —
 // if they never do, the session sits open forever (this is why test1/Faiz Riaz rows stayed
 // "Active" for days). Running it here too means it gets caught whenever admin opens this page.
@@ -4349,14 +4356,13 @@ async function autoCloseStaleAttendanceSessions() {
     let closedCount = 0;
     for (const d of snap.docs) {
       const r = d.data();
-      const elapsedHrs = (now - r.checkIn.seconds*1000) / 36e5;
-      if (elapsedHrs >= AUTO_LOGOUT_HRS) {
-        const autoTime = new Date(r.checkIn.seconds*1000 + AUTO_LOGOUT_HRS*36e5);
-        await updateDoc(doc(db,'cadd_attendance',d.id), { checkOut: Timestamp.fromDate(autoTime), autoLogout: true });
+      const cutoff = autoLogoutCutoff(r.checkIn.seconds);
+      if (now >= cutoff.getTime()) {
+        await updateDoc(doc(db,'cadd_attendance',d.id), { checkOut: Timestamp.fromDate(cutoff), autoLogout: true });
         closedCount++;
       }
     }
-    if (closedCount > 0) showToast(`Auto-closed ${closedCount} stale session(s) past 3 hours ⚡`, 'warning');
+    if (closedCount > 0) showToast(`Auto-closed ${closedCount} session(s) left open past 8:00 PM ⚡`, 'warning');
   } catch(e) { console.error('Auto-close stale sessions error:', e); }
 }
 
@@ -4653,6 +4659,7 @@ async function loadLiveSlots() {
   grid.innerHTML='<p style="color:var(--text3)">⏳ Loading live slots…</p>';
   closeSlotDetail();
   try {
+    await autoCloseStaleAttendanceSessions(); // nobody should show as "live" past the 8 PM cutoff
     const todayStart=new Date(); todayStart.setHours(0,0,0,0);
     const todayDow = new Date().getDay();
     // Single range query (checkIn >= today) — no composite index needed. We fetch every
