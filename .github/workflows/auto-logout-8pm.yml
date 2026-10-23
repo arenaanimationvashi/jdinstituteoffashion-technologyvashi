@@ -1,0 +1,49 @@
+name: Auto-logout at 8 PM
+
+# Closes every attendance session still open past 8:00 PM IST, even if nobody opens any app.
+# checkOut is stamped at exactly 8:00 PM IST (not at run time), so a late run never inflates hours.
+#
+# Two scheduled runs (times are UTC; India is UTC+05:30):
+#   14:35 UTC = 8:05 PM IST  -> the main run
+#   16:30 UTC = 10:00 PM IST -> safety net: GitHub occasionally delays or skips scheduled runs,
+#                               and it also catches any session opened after the main run.
+# Running twice is harmless — the job only touches sessions that are still open.
+
+on:
+  schedule:
+    - cron: '35 14 * * *'
+    - cron: '30 16 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — list what would be closed, change nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-logout-8pm
+  cancel-in-progress: false
+
+jobs:
+  auto-logout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # --no-save / --no-package-lock so this never alters the repo's package.json
+      # (the absence-reminders job keeps its own dependencies).
+      - name: Install Firebase SDK
+        run: npm install --no-save --no-package-lock firebase@10.12.2
+
+      - name: Close sessions left open past 8 PM IST
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: node scripts/auto-logout-sessions.mjs
